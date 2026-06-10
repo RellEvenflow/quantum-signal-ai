@@ -603,7 +603,7 @@ function Dashboard({ plan, user, onLogout }) {
 }
 
 // ─── Landing Page ─────────────────────────────────────────────────────────────
-function LandingPage({ onGetStarted }) {
+function LandingPage({ onGetStarted, onAdminLogin }) {
   return (
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'IBM Plex Mono',monospace",color:C.text}}>
       <style>{`${FONTS} *{box-sizing:border-box;margin:0;padding:0;} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} @keyframes floatUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}} @keyframes glowPurple{0%,100%{box-shadow:0 0 20px #a855f722}50%{box-shadow:0 0 50px #a855f755}}`}</style>
@@ -611,6 +611,7 @@ function LandingPage({ onGetStarted }) {
       <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,borderBottom:`1px solid ${C.border}`,background:"rgba(3,6,8,0.96)",backdropFilter:"blur(12px)",padding:"14px 40px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <Logo />
         <div style={{display:"flex",gap:16,alignItems:"center",fontSize:12,color:C.dim}}>
+          <button onClick={onAdminLogin} style={{background:"transparent",color:C.dim,border:"none",cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:1}}>🔐 Admin</button>
           <button onClick={onGetStarted} style={{background:C.purple,color:"#fff",border:"none",padding:"8px 18px",borderRadius:4,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,letterSpacing:1}}>GET STARTED</button>
         </div>
       </nav>
@@ -667,6 +668,95 @@ function LandingPage({ onGetStarted }) {
   );
 }
 
+// ─── Admin Credentials (bypass payment) ──────────────────────────────────────
+const ADMIN_USERS = [
+  { username:"quantumowner", password:"QSA!Owner2025", firstName:"Owner",   lastName:"Admin",   plan:"pro" },
+  { username:"quantumpartner", password:"QSA!Partner2025", firstName:"Partner", lastName:"Access",  plan:"pro" },
+];
+
+// ─── Admin Login Page ─────────────────────────────────────────────────────────
+function AdminLogin({ onLogin, onBack }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [showPass, setShowPass] = useState(false);
+
+  const handleLogin = () => {
+    setError(""); setLoading(true);
+    setTimeout(() => {
+      const match = ADMIN_USERS.find(u => u.username === username.trim().toLowerCase() && u.password === password);
+      if (match) {
+        onLogin({ firstName:match.firstName, lastName:match.lastName, email:`${match.username}@quantumsignalai.com`, phone:"" }, match.plan);
+      } else {
+        setError("Invalid username or password.");
+      }
+      setLoading(false);
+    }, 600);
+  };
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"'IBM Plex Mono',monospace", display:"flex", flexDirection:"column" }}>
+      <style>{FONTS}</style>
+      <Nav onBack={onBack} backLabel="← Back to site" />
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+        <div style={{ width:"100%", maxWidth:420 }}>
+          <div style={{ textAlign:"center", marginBottom:32 }}>
+            <div style={{ fontSize:32, marginBottom:12 }}>🔐</div>
+            <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:"#fff", marginBottom:8 }}>Admin Access</h2>
+            <p style={{ color:C.dim, fontSize:13 }}>Internal dashboard access · No payment required</p>
+          </div>
+
+          <div style={{ background:C.panel, border:`1px solid ${C.purple}55`, borderRadius:12, padding:"32px 28px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, background:"#0d0820", border:`1px solid ${C.purple}33`, borderRadius:6, padding:"10px 14px", marginBottom:24 }}>
+              <span style={{ fontSize:14 }}>✦</span>
+              <span style={{ fontSize:11, color:C.purple }}>Pro access · All markets · AI signals</span>
+            </div>
+
+            <Input label="Username" value={username} onChange={setUsername} placeholder="Enter your username" />
+
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:"block", fontSize:11, color:C.dim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>Password</label>
+              <div style={{ position:"relative" }}>
+                <input
+                  type={showPass?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+                  style={{ width:"100%", background:"#040c14", border:`1px solid ${C.border}`, color:C.text, padding:"12px 44px 12px 14px", borderRadius:6, fontSize:13, fontFamily:"'IBM Plex Mono',monospace", outline:"none", boxSizing:"border-box" }}
+                  onFocus={e=>e.target.style.borderColor=C.purple}
+                  onBlur={e=>e.target.style.borderColor=C.border}
+                />
+                <button onClick={()=>setShowPass(s=>!s)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.dim, cursor:"pointer", fontSize:14 }}>
+                  {showPass?"🙈":"👁"}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>
+                ⚠ {error}
+              </div>
+            )}
+
+            <Button onClick={handleLogin} disabled={loading} fullWidth variant="purple">
+              {loading ? "VERIFYING…" : "ACCESS DASHBOARD →"}
+            </Button>
+
+            <div style={{ marginTop:20, padding:"14px", background:C.bg, borderRadius:6, border:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:9, color:C.dim, letterSpacing:2, marginBottom:8 }}>YOUR CREDENTIALS</div>
+              <div style={{ fontSize:11, color:C.text, lineHeight:2 }}>
+                <div>Owner: <span style={{ color:C.accent }}>quantumowner</span></div>
+                <div>Partner: <span style={{ color:C.accent }}>quantumpartner</span></div>
+                <div style={{ marginTop:4, fontSize:10, color:C.dim }}>Passwords sent separately for security.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── App Root ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [page, setPage] = useState("landing");
@@ -678,7 +768,7 @@ export default function App() {
     s.src = "https://js.stripe.com/v3/";
     s.async = true;
     document.head.appendChild(s);
-    // Check if already logged in
+    // Restore session
     const saved = localStorage.getItem("qs_user");
     const savedPlan = localStorage.getItem("qs_plan");
     if (saved && savedPlan) { setUser(JSON.parse(saved)); setPlan(savedPlan); setPage("dashboard"); }
@@ -696,12 +786,19 @@ export default function App() {
     setPage("success");
   };
 
-  if (page === "landing")   return <LandingPage onGetStarted={()=>setPage("plan")} />;
-  if (page === "plan")      return <PlanPage onSelect={p=>{setPlan(p);setPage("signup");}} onBack={()=>setPage("landing")} />;
-  if (page === "signup")    return <SignupPage plan={plan} onNext={u=>{setUser(u);setPage("payment");}} onBack={()=>setPage("plan")} />;
-  if (page === "payment")   return <PaymentPage plan={plan} user={user} onSuccess={handlePaySuccess} onBack={()=>setPage("signup")} />;
-  if (page === "success")   return <SuccessPage plan={plan} user={user} onEnter={()=>setPage("dashboard")} />;
-  if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
+  const handleAdminLogin = (u, p) => {
+    localStorage.setItem("qs_user", JSON.stringify(u));
+    localStorage.setItem("qs_plan", p);
+    setUser(u); setPlan(p); setPage("dashboard");
+  };
+
+  if (page === "landing")    return <LandingPage onGetStarted={()=>setPage("plan")} onAdminLogin={()=>setPage("admin")} />;
+  if (page === "admin")      return <AdminLogin onLogin={handleAdminLogin} onBack={()=>setPage("landing")} />;
+  if (page === "plan")       return <PlanPage onSelect={p=>{setPlan(p);setPage("signup");}} onBack={()=>setPage("landing")} />;
+  if (page === "signup")     return <SignupPage plan={plan} onNext={u=>{setUser(u);setPage("payment");}} onBack={()=>setPage("plan")} />;
+  if (page === "payment")    return <PaymentPage plan={plan} user={user} onSuccess={handlePaySuccess} onBack={()=>setPage("signup")} />;
+  if (page === "success")    return <SuccessPage plan={plan} user={user} onEnter={()=>setPage("dashboard")} />;
+  if (page === "dashboard")  return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
 
