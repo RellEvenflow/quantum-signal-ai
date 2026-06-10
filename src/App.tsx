@@ -355,22 +355,45 @@ function SuccessPage({ plan, user, onEnter }) {
   );
 }
 
-// ─── Coins / Data ─────────────────────────────────────────────────────────────
-const COINS = [
-  { id:"bitcoin",     label:"BTC/USD", seed:67000, vol:1200 },
-  { id:"ethereum",    label:"ETH/USD", seed:3500,  vol:80   },
-  { id:"solana",      label:"SOL/USD", seed:175,   vol:6    },
-  { id:"binancecoin", label:"BNB/USD", seed:580,   vol:12   },
-  { id:"ripple",      label:"XRP/USD", seed:0.52,  vol:0.015},
+// ─── Markets / Data ───────────────────────────────────────────────────────────
+const MARKET_GROUPS = [
+  { label:"Crypto",  icon:"₿",  proOnly:false, markets:[
+    { id:"bitcoin",     label:"BTC/USD", seed:67000, vol:1200,  type:"crypto" },
+    { id:"ethereum",    label:"ETH/USD", seed:3500,  vol:80,    type:"crypto" },
+    { id:"solana",      label:"SOL/USD", seed:175,   vol:6,     type:"crypto" },
+    { id:"binancecoin", label:"BNB/USD", seed:580,   vol:12,    type:"crypto" },
+    { id:"ripple",      label:"XRP/USD", seed:0.52,  vol:0.015, type:"crypto" },
+  ]},
+  { label:"Indices", icon:"📊", proOnly:true,  markets:[
+    { id:"us30",   label:"US30",   seed:38500, vol:180, type:"sim" },
+    { id:"spx",    label:"SPX500", seed:5100,  vol:28,  type:"sim" },
+    { id:"nas100", label:"NAS100", seed:17800, vol:120, type:"sim" },
+  ]},
+  { label:"Metals",  icon:"🥇", proOnly:true,  markets:[
+    { id:"xauusd", label:"XAU/USD", seed:2320, vol:18,  type:"sim" },
+    { id:"xagusd", label:"XAG/USD", seed:27.5, vol:0.4, type:"sim" },
+  ]},
+  { label:"Forex",   icon:"💱", proOnly:true,  markets:[
+    { id:"eurusd", label:"EUR/USD", seed:1.085, vol:0.004, type:"sim" },
+    { id:"gbpusd", label:"GBP/USD", seed:1.265, vol:0.005, type:"sim" },
+    { id:"usdjpy", label:"USD/JPY", seed:151.5, vol:0.6,   type:"sim" },
+  ]},
 ];
+const ALL_MARKETS = MARKET_GROUPS.flatMap(g=>g.markets.map(m=>({...m,group:g.label,groupIcon:g.icon,proOnly:g.proOnly})));
 const INTERVALS = [{ label:"1D",days:1 },{ label:"7D",days:7 },{ label:"30D",days:30 },{ label:"90D",days:90 }];
 
 function simulateOHLC(seed, volatility, count=120) {
   let price=seed; const now=Date.now(); const interval=(90*24*60*60*1000)/count;
   return Array.from({length:count},(_,i)=>{ const change=(Math.random()-0.485)*volatility; price=Math.max(seed*0.3,price+change); const spread=volatility*0.4; const open=+(price-(Math.random()-0.5)*spread).toFixed(4); const close=+(price).toFixed(4); const high=+(Math.max(open,close)+Math.random()*spread*0.5).toFixed(4); const low=+(Math.min(open,close)-Math.random()*spread*0.5).toFixed(4); return {i,open,high,low,close,volume:Math.random()*1000+200,time:new Date(now-(count-i)*interval).toLocaleDateString([],{month:"short",day:"numeric"})}; });
 }
-async function tryFetchOHLC(coinId,days) { try { const r=await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`,{signal:AbortSignal.timeout(6000)}); if(!r.ok) return null; const raw=await r.json(); if(!Array.isArray(raw)||raw.length<10) return null; return raw.map((k,i)=>({i,time:new Date(k[0]).toLocaleDateString([],{month:"short",day:"numeric"}),open:k[1],high:k[2],low:k[3],close:k[4],volume:Math.abs(k[2]-k[3])*500+Math.random()*300})); } catch{return null;} }
-async function tryFetchTicker(coinId) { try { const r=await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=false&developer_data=false`,{signal:AbortSignal.timeout(6000)}); if(!r.ok) return null; const d=await r.json(); return {price:d.market_data.current_price.usd,change24h:d.market_data.price_change_percentage_24h,high24h:d.market_data.high_24h.usd,low24h:d.market_data.low_24h.usd,vol24h:d.market_data.total_volume.usd}; } catch{return null;} }
+async function tryFetchOHLC(market,days) {
+  if(market.type==="sim") return null;
+  try { const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}/ohlc?vs_currency=usd&days=${days}`,{signal:AbortSignal.timeout(6000)}); if(!r.ok) return null; const raw=await r.json(); if(!Array.isArray(raw)||raw.length<10) return null; return raw.map((k,i)=>({i,time:new Date(k[0]).toLocaleDateString([],{month:"short",day:"numeric"}),open:k[1],high:k[2],low:k[3],close:k[4],volume:Math.abs(k[2]-k[3])*500+Math.random()*300})); } catch{return null;}
+}
+async function tryFetchTicker(market) {
+  if(market.type==="sim") return null;
+  try { const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}?localization=false&tickers=false&community_data=false&developer_data=false`,{signal:AbortSignal.timeout(6000)}); if(!r.ok) return null; const d=await r.json(); return {price:d.market_data.current_price.usd,change24h:d.market_data.price_change_percentage_24h,high24h:d.market_data.high_24h.usd,low24h:d.market_data.low_24h.usd,vol24h:d.market_data.total_volume.usd}; } catch{return null;}
+}
 
 function calcEMA(data,p){const k=2/(p+1);let e=data[0].close;return data.map((d,i)=>{e=i===0?d.close:d.close*k+e*(1-k);return +e.toFixed(6);});}
 function calcRSI(data,p=14){if(data.length<=p)return data.map(()=>null);const out=Array(p).fill(null);let g=0,l=0;for(let i=1;i<=p;i++){const d=data[i].close-data[i-1].close;d>0?g+=d:l-=d;}g/=p;l/=p;out.push(l===0?100:+(100-100/(1+g/l)).toFixed(2));for(let i=p+1;i<data.length;i++){const d=data[i].close-data[i-1].close,dg=d>0?d:0,dl=d<0?-d:0;g=(g*(p-1)+dg)/p;l=(l*(p-1)+dl)/p;out.push(l===0?100:+(100-100/(1+g/l)).toFixed(2));}return out;}
@@ -404,7 +427,7 @@ function PaperTrading({currentPrice,currentSig,coinLabel,tier}){
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function Dashboard({ plan, user, onLogout }) {
   const isPro = plan === "pro";
-  const [coinIdx,setCoinIdx]=useState(0);
+  const [marketId,setMarketId]=useState("bitcoin");
   const [daysIdx,setDaysIdx]=useState(2);
   const [computed,setComputed]=useState(null);
   const [info,setInfo]=useState(null);
@@ -412,19 +435,23 @@ function Dashboard({ plan, user, onLogout }) {
   const [source,setSource]=useState("—");
   const [updated,setUpdated]=useState(null);
   const [auto,setAuto]=useState(true);
+  const [activeGroup,setActiveGroup]=useState("Crypto");
   const timer=useRef(null);
-  const coin=COINS[coinIdx],days=INTERVALS[daysIdx].days;
 
-  const load=useCallback(async(c,d)=>{
+  const market = ALL_MARKETS.find(m=>m.id===marketId) || ALL_MARKETS[0];
+  const days = INTERVALS[daysIdx].days;
+  const visibleGroups = isPro ? MARKET_GROUPS : MARKET_GROUPS.filter(g=>!g.proOnly);
+
+  const load=useCallback(async(m,d)=>{
     setLoading(true);
-    const [liveOHLC,liveTicker]=await Promise.all([tryFetchOHLC(c.id,d),tryFetchTicker(c.id)]);
+    const [liveOHLC,liveTicker]=await Promise.all([tryFetchOHLC(m,d),tryFetchTicker(m)]);
     if(liveOHLC&&liveOHLC.length>=30){setInfo(liveTicker);setComputed(buildComputed(liveOHLC));setSource("CoinGecko Live");}
-    else{const sim=simulateOHLC(c.seed,c.vol,120);setInfo({price:sim[sim.length-1].close,change24h:+(Math.random()*6-3).toFixed(2),high24h:+(sim[sim.length-1].close*1.02).toFixed(4),low24h:+(sim[sim.length-1].close*0.98).toFixed(4),vol24h:c.seed*80000});setComputed(buildComputed(sim));setSource("Simulated");}
+    else{const sim=simulateOHLC(m.seed,m.vol,120);const lastPrice=sim[sim.length-1].close;setInfo({price:lastPrice,change24h:+(Math.random()*4-2).toFixed(2),high24h:+(lastPrice*1.015).toFixed(4),low24h:+(lastPrice*0.985).toFixed(4),vol24h:m.seed*80000});setComputed(buildComputed(sim));setSource(m.type==="sim"?"Simulated (Realistic)":"Simulated");}
     setUpdated(new Date().toLocaleTimeString());setLoading(false);
   },[]);
 
-  useEffect(()=>{load(coin,days);},[coin.id,days]);
-  useEffect(()=>{clearInterval(timer.current);if(auto)timer.current=setInterval(()=>load(coin,days),60000);return()=>clearInterval(timer.current);},[auto,coin.id,days]);
+  useEffect(()=>{load(market,days);},[marketId,days]);
+  useEffect(()=>{clearInterval(timer.current);if(auto)timer.current=setInterval(()=>load(market,days),60000);return()=>clearInterval(timer.current);},[auto,marketId,days]);
 
   const sl=computed?.chart?.slice(-80)??[];
   const{last,e9,e21,e200,rsiVal,atrVal,sig,hist}=computed??{};
@@ -451,19 +478,35 @@ function Dashboard({ plan, user, onLogout }) {
       </nav>
 
       <div style={{padding:"16px 20px"}}>
+        {/* Market Group Tabs */}
+        <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+          {MARKET_GROUPS.map(g=>{
+            const locked=g.proOnly&&!isPro;
+            return(
+              <button key={g.label} onClick={()=>{if(!locked){setActiveGroup(g.label);const first=g.markets[0];setMarketId(first.id);}}}
+                style={{background:activeGroup===g.label?C.panel:C.bg,border:`1px solid ${activeGroup===g.label?(g.proOnly?C.purple:C.accent):C.border}`,color:locked?C.dim:activeGroup===g.label?(g.proOnly?C.purple:C.accent):C.dim,padding:"6px 14px",borderRadius:6,cursor:locked?"not-allowed":"pointer",fontSize:11,fontFamily:"'IBM Plex Mono',monospace",display:"flex",alignItems:"center",gap:6,opacity:locked?0.5:1}}>
+                {g.icon} {g.label} {locked&&<span style={{fontSize:9,color:C.purple}}>PRO</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Market Pills */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:10}}>
           <div>
-            <div style={{fontSize:22,fontWeight:700,color:C.accent}}>{coin.label}&nbsp;{info&&<span style={{color:C.text}}>${fmt(info.price)}</span>}{info&&<span style={{fontSize:13,color:cc,marginLeft:8}}>{fmtP(info.change24h)}</span>}</div>
-            {info&&<div style={{fontSize:10,color:C.dim,marginTop:3}}>H: ${fmt(info.high24h)} · L: ${fmt(info.low24h)} · Vol: {fmtK(info.vol24h)}</div>}
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
-            <div style={{display:"flex",gap:5}}>{COINS.map((c,i)=><Pill key={c.id} active={coinIdx===i} onClick={()=>setCoinIdx(i)}>{c.label.split("/")[0]}</Pill>)}</div>
-            <div style={{display:"flex",gap:5,alignItems:"center"}}>
-              {INTERVALS.map((iv,i)=><Pill key={iv.label} active={daysIdx===i} onClick={()=>setDaysIdx(i)}>{iv.label}</Pill>)}
-              {trend&&<span style={{fontSize:10,color:trend==="BULLISH"?C.green:C.red,border:"1px solid",borderColor:trend==="BULLISH"?C.green:C.red,padding:"4px 8px",borderRadius:3}}>{trend}</span>}
-              <button onClick={()=>load(coin,days)} style={{background:C.panel,border:`1px solid ${C.border}`,color:C.accent,padding:"5px 10px",borderRadius:4,cursor:"pointer",fontSize:11}}>↻</button>
-              <button onClick={()=>setAuto(a=>!a)} style={{background:auto?"#002a1a":C.panel,border:`1px solid ${auto?C.green:C.border}`,color:auto?C.green:C.dim,padding:"5px 10px",borderRadius:4,cursor:"pointer",fontSize:10}}>{auto?"● AUTO":"○ AUTO"}</button>
+            <div style={{display:"flex",gap:5,marginBottom:8,flexWrap:"wrap"}}>
+              {(MARKET_GROUPS.find(g=>g.label===activeGroup)?.markets||[]).map(m=>(
+                <Pill key={m.id} active={marketId===m.id} onClick={()=>setMarketId(m.id)}>{m.label}</Pill>
+              ))}
             </div>
+            <div style={{fontSize:22,fontWeight:700,color:C.accent}}>{market.label}&nbsp;{info&&<span style={{color:C.text}}>${fmt(info.price)}</span>}{info&&<span style={{fontSize:13,color:cc,marginLeft:8}}>{fmtP(info.change24h)}</span>}</div>
+            {info&&<div style={{fontSize:10,color:C.dim,marginTop:3}}>H: ${fmt(info.high24h)} · L: ${fmt(info.low24h)} · <span style={{color:market.type==="sim"?C.yellow:C.green}}>{market.type==="sim"?"◐ Simulated data":"● Live data"}</span></div>}
+          </div>
+          <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
+            {INTERVALS.map((iv,i)=><Pill key={iv.label} active={daysIdx===i} onClick={()=>setDaysIdx(i)}>{iv.label}</Pill>)}
+            {trend&&<span style={{fontSize:10,color:trend==="BULLISH"?C.green:C.red,border:"1px solid",borderColor:trend==="BULLISH"?C.green:C.red,padding:"4px 8px",borderRadius:3}}>{trend}</span>}
+            <button onClick={()=>load(market,days)} style={{background:C.panel,border:`1px solid ${C.border}`,color:C.accent,padding:"5px 10px",borderRadius:4,cursor:"pointer",fontSize:11}}>↻</button>
+            <button onClick={()=>setAuto(a=>!a)} style={{background:auto?"#002a1a":C.panel,border:`1px solid ${auto?C.green:C.border}`,color:auto?C.green:C.dim,padding:"5px 10px",borderRadius:4,cursor:"pointer",fontSize:10}}>{auto?"● AUTO":"○ AUTO"}</button>
           </div>
         </div>
 
@@ -501,9 +544,9 @@ function Dashboard({ plan, user, onLogout }) {
             </div>
           )}
 
-          <PaperTrading currentPrice={last?.close||0} currentSig={sig} coinLabel={coin.label} tier={plan} />
+          <PaperTrading currentPrice={last?.close||0} currentSig={sig} coinLabel={market.label} tier={plan} />
 
-          <ChartPanel title={`Price + EMA — ${coin.label} · ${INTERVALS[daysIdx].label}`} right={<SigBadge type={sig} />}>
+          <ChartPanel title={`Price + EMA — ${market.label} · ${INTERVALS[daysIdx].label}`} right={<SigBadge type={sig} />}>
             <ResponsiveContainer width="100%" height={175}>
               <LineChart data={sl}>
                 <CartesianGrid stroke={C.border} strokeDasharray="3 3" />
@@ -661,3 +704,4 @@ export default function App() {
   if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
+
