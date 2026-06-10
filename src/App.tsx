@@ -763,42 +763,75 @@ export default function App() {
   const [plan, setPlan] = useState(null);
   const [user, setUser] = useState(null);
 
+  // Navigate with browser history so back button works
+  const navigate = (to) => {
+    window.history.pushState({ page: to }, "", `#${to}`);
+    setPage(to);
+  };
+
   useEffect(() => {
     const s = document.createElement("script");
     s.src = "https://js.stripe.com/v3/";
     s.async = true;
     document.head.appendChild(s);
+
     // Restore session
     const saved = localStorage.getItem("qs_user");
     const savedPlan = localStorage.getItem("qs_plan");
-    if (saved && savedPlan) { setUser(JSON.parse(saved)); setPlan(savedPlan); setPage("dashboard"); }
+    if (saved && savedPlan) {
+      setUser(JSON.parse(saved));
+      setPlan(savedPlan);
+      setPage("dashboard");
+      return;
+    }
+
+    // Read initial hash
+    const hash = window.location.hash.replace("#", "");
+    if (hash && ["landing","plan","signup","payment","admin","dashboard"].includes(hash)) {
+      setPage(hash);
+    }
+
+    // Handle browser back/forward buttons
+    const handlePop = (e) => {
+      const p = e.state?.page || "landing";
+      // Don't let back go to dashboard if logged out
+      const savedU = localStorage.getItem("qs_user");
+      if (p === "dashboard" && !savedU) { setPage("landing"); return; }
+      setPage(p);
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("qs_user");
     localStorage.removeItem("qs_plan");
-    setUser(null); setPlan(null); setPage("landing");
+    setUser(null); setPlan(null);
+    window.history.pushState({ page:"landing" }, "", "#landing");
+    setPage("landing");
   };
 
   const handlePaySuccess = () => {
     localStorage.setItem("qs_user", JSON.stringify(user));
     localStorage.setItem("qs_plan", plan);
-    setPage("success");
+    navigate("success");
   };
 
   const handleAdminLogin = (u, p) => {
     localStorage.setItem("qs_user", JSON.stringify(u));
     localStorage.setItem("qs_plan", p);
-    setUser(u); setPlan(p); setPage("dashboard");
+    setUser(u); setPlan(p);
+    window.history.replaceState({ page:"dashboard" }, "", "#dashboard");
+    setPage("dashboard");
   };
 
-  if (page === "landing")    return <LandingPage onGetStarted={()=>setPage("plan")} onAdminLogin={()=>setPage("admin")} />;
-  if (page === "admin")      return <AdminLogin onLogin={handleAdminLogin} onBack={()=>setPage("landing")} />;
-  if (page === "plan")       return <PlanPage onSelect={p=>{setPlan(p);setPage("signup");}} onBack={()=>setPage("landing")} />;
-  if (page === "signup")     return <SignupPage plan={plan} onNext={u=>{setUser(u);setPage("payment");}} onBack={()=>setPage("plan")} />;
-  if (page === "payment")    return <PaymentPage plan={plan} user={user} onSuccess={handlePaySuccess} onBack={()=>setPage("signup")} />;
-  if (page === "success")    return <SuccessPage plan={plan} user={user} onEnter={()=>setPage("dashboard")} />;
-  if (page === "dashboard")  return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
+  if (page === "landing")   return <LandingPage onGetStarted={()=>navigate("plan")} onAdminLogin={()=>navigate("admin")} />;
+  if (page === "admin")     return <AdminLogin onLogin={handleAdminLogin} onBack={()=>navigate("landing")} />;
+  if (page === "plan")      return <PlanPage onSelect={p=>{setPlan(p);navigate("signup");}} onBack={()=>navigate("landing")} />;
+  if (page === "signup")    return <SignupPage plan={plan} onNext={u=>{setUser(u);navigate("payment");}} onBack={()=>navigate("plan")} />;
+  if (page === "payment")   return <PaymentPage plan={plan} user={user} onSuccess={handlePaySuccess} onBack={()=>navigate("signup")} />;
+  if (page === "success")   return <SuccessPage plan={plan} user={user} onEnter={()=>navigate("dashboard")} />;
+  if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
 
