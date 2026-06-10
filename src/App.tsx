@@ -356,6 +356,8 @@ function SuccessPage({ plan, user, onEnter }) {
 }
 
 // ─── Markets / Data ───────────────────────────────────────────────────────────
+const TWELVE_KEY = "9159b457e1f84232a39840dcbc9a6685";
+
 const MARKET_GROUPS = [
   { label:"Crypto",  icon:"₿",  proOnly:false, markets:[
     { id:"bitcoin",     label:"BTC/USD", seed:67000, vol:1200,  type:"crypto" },
@@ -364,35 +366,98 @@ const MARKET_GROUPS = [
     { id:"binancecoin", label:"BNB/USD", seed:580,   vol:12,    type:"crypto" },
     { id:"ripple",      label:"XRP/USD", seed:0.52,  vol:0.015, type:"crypto" },
   ]},
-  { label:"Indices", icon:"📊", proOnly:true,  markets:[
-    { id:"us30",   label:"US30",   seed:38500, vol:180, type:"sim" },
-    { id:"spx",    label:"SPX500", seed:5100,  vol:28,  type:"sim" },
-    { id:"nas100", label:"NAS100", seed:17800, vol:120, type:"sim" },
+  { label:"Indices", icon:"📊", proOnly:true, markets:[
+    { id:"DJI",   tdSymbol:"DJI",   label:"US30",   seed:38500, vol:180, type:"twelve" },
+    { id:"SPX",   tdSymbol:"SPX",   label:"SPX500", seed:5100,  vol:28,  type:"twelve" },
+    { id:"NDX",   tdSymbol:"NDX",   label:"NAS100", seed:17800, vol:120, type:"twelve" },
   ]},
-  { label:"Metals",  icon:"🥇", proOnly:true,  markets:[
-    { id:"xauusd", label:"XAU/USD", seed:2320, vol:18,  type:"sim" },
-    { id:"xagusd", label:"XAG/USD", seed:27.5, vol:0.4, type:"sim" },
+  { label:"Metals", icon:"🥇", proOnly:true, markets:[
+    { id:"XAU/USD", tdSymbol:"XAU/USD", label:"XAU/USD", seed:2320, vol:18,  type:"twelve" },
+    { id:"XAG/USD", tdSymbol:"XAG/USD", label:"XAG/USD", seed:27.5, vol:0.4, type:"twelve" },
   ]},
-  { label:"Forex",   icon:"💱", proOnly:true,  markets:[
-    { id:"eurusd", label:"EUR/USD", seed:1.085, vol:0.004, type:"sim" },
-    { id:"gbpusd", label:"GBP/USD", seed:1.265, vol:0.005, type:"sim" },
-    { id:"usdjpy", label:"USD/JPY", seed:151.5, vol:0.6,   type:"sim" },
+  { label:"Forex", icon:"💱", proOnly:true, markets:[
+    { id:"EUR/USD", tdSymbol:"EUR/USD", label:"EUR/USD", seed:1.085, vol:0.004, type:"twelve" },
+    { id:"GBP/USD", tdSymbol:"GBP/USD", label:"GBP/USD", seed:1.265, vol:0.005, type:"twelve" },
+    { id:"USD/JPY", tdSymbol:"USD/JPY", label:"USD/JPY", seed:151.5, vol:0.6,   type:"twelve" },
   ]},
 ];
 const ALL_MARKETS = MARKET_GROUPS.flatMap(g=>g.markets.map(m=>({...m,group:g.label,groupIcon:g.icon,proOnly:g.proOnly})));
-const INTERVALS = [{ label:"1D",days:1 },{ label:"7D",days:7 },{ label:"30D",days:30 },{ label:"90D",days:90 }];
+const INTERVALS = [
+  { label:"1D",  days:1,  tdInterval:"5min"  },
+  { label:"7D",  days:7,  tdInterval:"1h"    },
+  { label:"30D", days:30, tdInterval:"4h"    },
+  { label:"90D", days:90, tdInterval:"1day"  },
+];
 
 function simulateOHLC(seed, volatility, count=120) {
   let price=seed; const now=Date.now(); const interval=(90*24*60*60*1000)/count;
   return Array.from({length:count},(_,i)=>{ const change=(Math.random()-0.485)*volatility; price=Math.max(seed*0.3,price+change); const spread=volatility*0.4; const open=+(price-(Math.random()-0.5)*spread).toFixed(4); const close=+(price).toFixed(4); const high=+(Math.max(open,close)+Math.random()*spread*0.5).toFixed(4); const low=+(Math.min(open,close)-Math.random()*spread*0.5).toFixed(4); return {i,open,high,low,close,volume:Math.random()*1000+200,time:new Date(now-(count-i)*interval).toLocaleDateString([],{month:"short",day:"numeric"})}; });
 }
-async function tryFetchOHLC(market,days) {
-  if(market.type==="sim") return null;
-  try { const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}/ohlc?vs_currency=usd&days=${days}`,{signal:AbortSignal.timeout(6000)}); if(!r.ok) return null; const raw=await r.json(); if(!Array.isArray(raw)||raw.length<10) return null; return raw.map((k,i)=>({i,time:new Date(k[0]).toLocaleDateString([],{month:"short",day:"numeric"}),open:k[1],high:k[2],low:k[3],close:k[4],volume:Math.abs(k[2]-k[3])*500+Math.random()*300})); } catch{return null;}
+
+async function fetchTwelveOHLC(market, tdInterval) {
+  try {
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(market.tdSymbol)}&interval=${tdInterval}&outputsize=120&apikey=${TWELVE_KEY}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.status === "error" || !d.values || d.values.length < 10) return null;
+    return d.values.slice().reverse().map((k, i) => ({
+      i,
+      time: new Date(k.datetime).toLocaleDateString([], { month:"short", day:"numeric" }),
+      open: parseFloat(k.open), high: parseFloat(k.high),
+      low:  parseFloat(k.low),  close: parseFloat(k.close),
+      volume: parseFloat(k.volume || 500),
+    }));
+  } catch { return null; }
 }
+
+async function fetchTwelveQuote(market) {
+  try {
+    const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(market.tdSymbol)}&apikey=${TWELVE_KEY}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.status === "error" || !d.close) return null;
+    return {
+      price:     parseFloat(d.close),
+      change24h: parseFloat(d.percent_change),
+      high24h:   parseFloat(d.high),
+      low24h:    parseFloat(d.low),
+      vol24h:    parseFloat(d.volume || 0),
+    };
+  } catch { return null; }
+}
+
+async function tryFetchOHLC(market, days) {
+  if (market.type === "crypto") {
+    try {
+      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}/ohlc?vs_currency=usd&days=${days}`,{signal:AbortSignal.timeout(6000)});
+      if(!r.ok) return null;
+      const raw=await r.json();
+      if(!Array.isArray(raw)||raw.length<10) return null;
+      return raw.map((k,i)=>({i,time:new Date(k[0]).toLocaleDateString([],{month:"short",day:"numeric"}),open:k[1],high:k[2],low:k[3],close:k[4],volume:Math.abs(k[2]-k[3])*500+Math.random()*300}));
+    } catch { return null; }
+  }
+  if (market.type === "twelve") {
+    const iv = INTERVALS.find(iv=>iv.days===days)?.tdInterval || "1h";
+    return await fetchTwelveOHLC(market, iv);
+  }
+  return null;
+}
+
 async function tryFetchTicker(market) {
-  if(market.type==="sim") return null;
-  try { const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}?localization=false&tickers=false&community_data=false&developer_data=false`,{signal:AbortSignal.timeout(6000)}); if(!r.ok) return null; const d=await r.json(); return {price:d.market_data.current_price.usd,change24h:d.market_data.price_change_percentage_24h,high24h:d.market_data.high_24h.usd,low24h:d.market_data.low_24h.usd,vol24h:d.market_data.total_volume.usd}; } catch{return null;}
+  if (market.type === "crypto") {
+    try {
+      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}?localization=false&tickers=false&community_data=false&developer_data=false`,{signal:AbortSignal.timeout(6000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      return {price:d.market_data.current_price.usd,change24h:d.market_data.price_change_percentage_24h,high24h:d.market_data.high_24h.usd,low24h:d.market_data.low_24h.usd,vol24h:d.market_data.total_volume.usd};
+    } catch { return null; }
+  }
+  if (market.type === "twelve") {
+    return await fetchTwelveQuote(market);
+  }
+  return null;
 }
 
 function calcEMA(data,p){const k=2/(p+1);let e=data[0].close;return data.map((d,i)=>{e=i===0?d.close:d.close*k+e*(1-k);return +e.toFixed(6);});}
@@ -445,8 +510,14 @@ function Dashboard({ plan, user, onLogout }) {
   const load=useCallback(async(m,d)=>{
     setLoading(true);
     const [liveOHLC,liveTicker]=await Promise.all([tryFetchOHLC(m,d),tryFetchTicker(m)]);
-    if(liveOHLC&&liveOHLC.length>=30){setInfo(liveTicker);setComputed(buildComputed(liveOHLC));setSource("CoinGecko Live");}
-    else{const sim=simulateOHLC(m.seed,m.vol,120);const lastPrice=sim[sim.length-1].close;setInfo({price:lastPrice,change24h:+(Math.random()*4-2).toFixed(2),high24h:+(lastPrice*1.015).toFixed(4),low24h:+(lastPrice*0.985).toFixed(4),vol24h:m.seed*80000});setComputed(buildComputed(sim));setSource(m.type==="sim"?"Simulated (Realistic)":"Simulated");}
+    if(liveOHLC&&liveOHLC.length>=30){
+      setInfo(liveTicker);setComputed(buildComputed(liveOHLC));
+      setSource(m.type==="twelve"?"Twelve Data Live":"CoinGecko Live");
+    } else {
+      const sim=simulateOHLC(m.seed,m.vol,120);const lastPrice=sim[sim.length-1].close;
+      setInfo({price:lastPrice,change24h:+(Math.random()*4-2).toFixed(2),high24h:+(lastPrice*1.015).toFixed(4),low24h:+(lastPrice*0.985).toFixed(4),vol24h:m.seed*80000});
+      setComputed(buildComputed(sim));setSource("Simulated (API unavailable)");
+    }
     setUpdated(new Date().toLocaleTimeString());setLoading(false);
   },[]);
 
@@ -834,5 +905,6 @@ export default function App() {
   if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
+
 
 
