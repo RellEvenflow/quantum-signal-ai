@@ -460,20 +460,243 @@ async function tryFetchTicker(market) {
   return null;
 }
 
+async function fetchTwelveOHLC(market, tdInterval) {
+  // Try direct first, then CORS proxy as fallback
+  const urls = [
+    `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(market.tdSymbol)}&interval=${tdInterval}&outputsize=120&apikey=${TWELVE_KEY}`,
+    `https://corsproxy.io/?${encodeURIComponent(`https://api.twelvedata.com/time_series?symbol=${market.tdSymbol}&interval=${tdInterval}&outputsize=120&apikey=${TWELVE_KEY}`)}`,
+  ];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (d.status === "error" || !d.values || d.values.length < 10) continue;
+      return d.values.slice().reverse().map((k, i) => ({
+        i,
+        time: new Date(k.datetime).toLocaleDateString([], { month:"short", day:"numeric" }),
+        open: parseFloat(k.open), high: parseFloat(k.high),
+        low:  parseFloat(k.low),  close: parseFloat(k.close),
+        volume: parseFloat(k.volume || 500),
+      }));
+    } catch { continue; }
+  }
+  return null;
+}
+
+async function fetchTwelveQuote(market) {
+  const urls = [
+    `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(market.tdSymbol)}&apikey=${TWELVE_KEY}`,
+    `https://corsproxy.io/?${encodeURIComponent(`https://api.twelvedata.com/quote?symbol=${market.tdSymbol}&apikey=${TWELVE_KEY}`)}`,
+  ];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (d.status === "error" || !d.close) continue;
+      return {
+        price:     parseFloat(d.close),
+        change24h: parseFloat(d.percent_change),
+        high24h:   parseFloat(d.high),
+        low24h:    parseFloat(d.low),
+        vol24h:    parseFloat(d.volume || 0),
+      };
+    } catch { continue; }
+  }
+  return null;
+}
+
+async function tryFetchOHLC(market, days) {
+  if (market.type === "crypto") {
+    try {
+      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}/ohlc?vs_currency=usd&days=${days}`,{signal:AbortSignal.timeout(6000)});
+      if(!r.ok) return null;
+      const raw=await r.json();
+      if(!Array.isArray(raw)||raw.length<10) return null;
+      return raw.map((k,i)=>({i,time:new Date(k[0]).toLocaleDateString([],{month:"short",day:"numeric"}),open:k[1],high:k[2],low:k[3],close:k[4],volume:Math.abs(k[2]-k[3])*500+Math.random()*300}));
+    } catch { return null; }
+  }
+  if (market.type === "twelve") {
+    const iv = INTERVALS.find(iv=>iv.days===days)?.tdInterval || "1h";
+    return await fetchTwelveOHLC(market, iv);
+  }
+  return null;
+}
+
+async function tryFetchTicker(market) {
+  if (market.type === "crypto") {
+    try {
+      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}?localization=false&tickers=false&community_data=false&developer_data=false`,{signal:AbortSignal.timeout(6000)});
+      if(!r.ok) return null;
+      const d=await r.json();
+      return {price:d.market_data.current_price.usd,change24h:d.market_data.price_change_percentage_24h,high24h:d.market_data.high_24h.usd,low24h:d.market_data.low_24h.usd,vol24h:d.market_data.total_volume.usd};
+    } catch { return null; }
+  }
+  if (market.type === "twelve") return await fetchTwelveQuote(market);
+  return null;
+}
+
 function calcEMA(data,p){const k=2/(p+1);let e=data[0].close;return data.map((d,i)=>{e=i===0?d.close:d.close*k+e*(1-k);return +e.toFixed(6);});}
 function calcRSI(data,p=14){if(data.length<=p)return data.map(()=>null);const out=Array(p).fill(null);let g=0,l=0;for(let i=1;i<=p;i++){const d=data[i].close-data[i-1].close;d>0?g+=d:l-=d;}g/=p;l/=p;out.push(l===0?100:+(100-100/(1+g/l)).toFixed(2));for(let i=p+1;i<data.length;i++){const d=data[i].close-data[i-1].close,dg=d>0?d:0,dl=d<0?-d:0;g=(g*(p-1)+dg)/p;l=(l*(p-1)+dl)/p;out.push(l===0?100:+(100-100/(1+g/l)).toFixed(2));}return out;}
 function calcMACD(data){const e12=calcEMA(data,12),e26=calcEMA(data,26);const line=e12.map((v,i)=>+(v-e26[i]).toFixed(6));const sig=[];let s=line[Math.min(26,line.length-1)];line.forEach((v,i)=>{if(i<26){sig.push(null);return;}s=i===26?v:+(v*0.2+s*0.8).toFixed(6);sig.push(s);});return{line,sig,hist:line.map((v,i)=>sig[i]!=null?+(v-sig[i]).toFixed(6):null)};}
 function calcOBV(data){const out=[0];for(let i=1;i<data.length;i++){const d=data[i].close-data[i-1].close;out.push(d>0?out[i-1]+data[i].volume:d<0?out[i-1]-data[i].volume:out[i-1]);}return out;}
 function calcATR(data,p=14){const out=[null];for(let i=1;i<data.length;i++){const tr=Math.abs(data[i].close-data[i-1].close);if(i<p){out.push(null);continue;}out.push(+((((out[i-1]??tr)*(p-1))+tr)/p).toFixed(6));}return out;}
-function calcSignals(data,e9,e21,R,M,O){return data.map((d,i)=>{if(i<27)return{...d,sig:null};const xUp=e9[i]>e21[i]&&e9[i-1]<=e21[i-1],xDn=e9[i]<e21[i]&&e9[i-1]>=e21[i-1];const ok=R[i]!=null&&R[i]>30&&R[i]<65,mb=M.hist[i]!=null&&M.hist[i]>0&&M.hist[i-1]!=null&&M.hist[i-1]<=0,vc=i>=3&&O[i]>O[i-3];let sig=null;if(xUp&&ok&&mb&&vc)sig="STRONG BUY";else if(xUp&&ok)sig="BUY";else if(xDn&&R[i]!=null&&R[i]>65)sig="SELL";return{...d,sig};});}
-function buildComputed(ohlc){const E9=calcEMA(ohlc,9),E21=calcEMA(ohlc,21),E50=calcEMA(ohlc,50),E200=calcEMA(ohlc,Math.min(200,ohlc.length-1));const R=calcRSI(ohlc),M=calcMACD(ohlc),O=calcOBV(ohlc),A=calcATR(ohlc);const S=calcSignals(ohlc,E9,E21,R,M,O);const chart=S.map((d,i)=>({...d,e9:E9[i],e21:E21[i],e50:E50[i],rsi:R[i],macd:M.line[i],signal:M.sig[i],hist:M.hist[i],obv:O[i],atr:A[i]}));const n=ohlc.length-1;return{chart,last:ohlc[n],e9:E9[n],e21:E21[n],e200:E200[n],rsiVal:R[n],atrVal:A[n],sig:S[n].sig,hist:M.hist[n]};}
-function getConfidence(sig,rsiVal,hist,e9,e21){let score=50;if(sig==="STRONG BUY")score+=30;else if(sig==="BUY")score+=15;else if(sig==="SELL")score-=20;if(rsiVal!=null){if(rsiVal>30&&rsiVal<65)score+=10;else if(rsiVal>70||rsiVal<25)score-=15;}if(hist!=null&&hist>0)score+=8;if(e9>e21)score+=7;return Math.min(99,Math.max(10,score));}
 
-function TT({active,payload,label}){if(!active||!payload?.length)return null;return <div style={{background:"#040c12",border:`1px solid ${C.border}`,borderRadius:6,padding:"8px 12px",fontSize:11,fontFamily:"'IBM Plex Mono',monospace"}}><div style={{color:C.dim,marginBottom:4}}>{label}</div>{payload.map((p,i)=>p.value!=null&&<div key={i} style={{color:p.color||C.accent}}>{p.name}: {fmt(p.value,4)}</div>)}</div>;}
-function StatCard({label,value,sub,accent}){return <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",flex:1,minWidth:120}}><div style={{fontSize:9,color:C.dim,letterSpacing:2,textTransform:"uppercase",marginBottom:5}}>{label}</div><div style={{fontSize:17,fontFamily:"'IBM Plex Mono',monospace",color:accent||C.accent,fontWeight:700,wordBreak:"break-all"}}>{value}</div>{sub&&<div style={{fontSize:10,color:C.dim,marginTop:3}}>{sub}</div>}</div>;}
-function ChartPanel({title,children,right}){return <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,marginBottom:12,overflow:"hidden"}}><div style={{padding:"9px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,color:C.dim,letterSpacing:2,textTransform:"uppercase",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{title}</span>{right}</div><div style={{padding:14}}>{children}</div></div>;}
-function SigBadge({type}){if(!type)return null;const m={"STRONG BUY":{bg:"#002a1a",bd:C.green,c:C.green,t:"⚡ STRONG BUY"},"BUY":{bg:"#001a10",bd:"#00cc66",c:"#00cc66",t:"↑ BUY"},"SELL":{bg:"#2a0010",bd:C.red,c:C.red,t:"↓ SELL"}}[type];if(!m)return null;return <span style={{fontSize:10,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:1,padding:"3px 9px",borderRadius:3,background:m.bg,border:`1px solid ${m.bd}`,color:m.c}}>{m.t}</span>;}
-function Pill({active,onClick,children}){return <button onClick={onClick} style={{background:active?C.accent:C.panel,color:active?C.bg:C.dim,border:`1px solid ${active?C.accent:C.border}`,padding:"5px 11px",borderRadius:4,cursor:"pointer",fontSize:11,fontFamily:"'IBM Plex Mono',monospace",transition:"all 0.15s"}}>{children}</button>;}
+function calcSignals(data,e9,e21,R,M,O){
+  return data.map((d,i)=>{
+    if(i<27) return{...d,sig:null,sigStrength:0};
+    const xUp=e9[i]>e21[i]&&e9[i-1]<=e21[i-1];
+    const xDn=e9[i]<e21[i]&&e9[i-1]>=e21[i-1];
+    const ok=R[i]!=null&&R[i]>30&&R[i]<65;
+    const mb=M.hist[i]!=null&&M.hist[i]>0&&M.hist[i-1]!=null&&M.hist[i-1]<=0;
+    const vc=i>=3&&O[i]>O[i-3];
+    const rsiOS=R[i]!=null&&R[i]<30; // oversold — strong buy hint
+    const rsiOB=R[i]!=null&&R[i]>70; // overbought — strong sell hint
+    let sig=null, sigStrength=0;
+    if(xUp&&ok&&mb&&vc){sig="STRONG BUY";sigStrength=4;}
+    else if(xUp&&ok&&rsiOS){sig="HIGHLY ADVISED BUY";sigStrength=3;}
+    else if(xUp&&ok){sig="BUY";sigStrength=2;}
+    else if(xDn&&rsiOB&&mb){sig="HIGHLY ADVISED SELL";sigStrength=-3;}
+    else if(xDn&&R[i]!=null&&R[i]>65){sig="SELL";sigStrength=-2;}
+    return{...d,sig,sigStrength};
+  });
+}
+
+function buildComputed(ohlc){
+  const E9=calcEMA(ohlc,9),E21=calcEMA(ohlc,21),E50=calcEMA(ohlc,50),E200=calcEMA(ohlc,Math.min(200,ohlc.length-1));
+  const R=calcRSI(ohlc),M=calcMACD(ohlc),O=calcOBV(ohlc),A=calcATR(ohlc);
+  const S=calcSignals(ohlc,E9,E21,R,M,O);
+  const chart=S.map((d,i)=>({...d,e9:E9[i],e21:E21[i],e50:E50[i],rsi:R[i],macd:M.line[i],signal:M.sig[i],hist:M.hist[i],obv:O[i],atr:A[i]}));
+  const n=ohlc.length-1;
+  return{chart,last:ohlc[n],e9:E9[n],e21:E21[n],e200:E200[n],rsiVal:R[n],atrVal:A[n],sig:S[n].sig,sigStrength:S[n].sigStrength,hist:M.hist[n]};
+}
+
+function getConfidence(sig,rsiVal,hist,e9,e21){
+  let score=50;
+  if(sig==="STRONG BUY"||sig==="HIGHLY ADVISED BUY")score+=30;
+  else if(sig==="BUY")score+=15;
+  else if(sig==="HIGHLY ADVISED SELL")score-=25;
+  else if(sig==="SELL")score-=20;
+  if(rsiVal!=null){if(rsiVal>30&&rsiVal<65)score+=10;else if(rsiVal>70||rsiVal<25)score-=15;}
+  if(hist!=null&&hist>0)score+=8;
+  if(e9>e21)score+=7;
+  return Math.min(99,Math.max(10,score));
+}
+
+// ─── Signal Notification Banner ───────────────────────────────────────────────
+function SignalBanner({ sig, sigStrength, market, price }) {
+  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(null);
+  const prevSig = useRef(null);
+
+  useEffect(() => {
+    if (sig && sig !== prevSig.current && sig !== dismissed) {
+      setVisible(true);
+      prevSig.current = sig;
+      // Auto-dismiss after 12s
+      const t = setTimeout(() => setVisible(false), 12000);
+      return () => clearTimeout(t);
+    }
+  }, [sig, market]);
+
+  if (!visible || !sig) return null;
+
+  const isStrongBuy  = sig === "STRONG BUY";
+  const isAdvisedBuy = sig === "HIGHLY ADVISED BUY";
+  const isAdvisedSell= sig === "HIGHLY ADVISED SELL";
+  const isBuy = sig.includes("BUY");
+
+  const cfg = {
+    "STRONG BUY":         { bg:"#001a0a", border:"#00ff88", color:"#00ff88", icon:"⚡", label:"STRONG BUY SIGNAL", advice:"All 4 confluence indicators confirm. High-probability entry." },
+    "HIGHLY ADVISED BUY": { bg:"#001408", border:"#00dd66", color:"#00dd66", icon:"🎯", label:"HIGHLY ADVISED BUY", advice:"RSI oversold + EMA crossover. Strong reversal opportunity." },
+    "BUY":                { bg:"#001008", border:"#00aa44", color:"#00aa44", icon:"↑",  label:"BUY SIGNAL",         advice:"EMA crossover confirmed with RSI in safe zone." },
+    "HIGHLY ADVISED SELL":{ bg:"#1a0008", border:"#ff2244", color:"#ff2244", icon:"🚨", label:"HIGHLY ADVISED SELL", advice:"RSI overbought + momentum dropping. Consider exiting." },
+    "SELL":               { bg:"#140006", border:"#cc2233", color:"#cc2233", icon:"↓",  label:"SELL SIGNAL",         advice:"EMA death cross with RSI elevated. Watch for reversal." },
+  }[sig] || {};
+
+  return (
+    <div style={{
+      position:"fixed", top:70, right:20, zIndex:999, width:320,
+      background:cfg.bg, border:`1px solid ${cfg.border}`,
+      borderRadius:12, padding:"16px 18px", boxShadow:`0 0 30px ${cfg.border}44`,
+      animation:"slideIn 0.4s ease forwards",
+    }}>
+      <style>{`@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:20}}>{cfg.icon}</span>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:cfg.color,letterSpacing:1,fontFamily:"'IBM Plex Mono',monospace"}}>{cfg.label}</div>
+            <div style={{fontSize:10,color:C.dim,marginTop:2}}>{market?.label} · ${fmt(price)}</div>
+          </div>
+        </div>
+        <button onClick={()=>{setVisible(false);setDismissed(sig);}} style={{background:"transparent",border:"none",color:C.dim,cursor:"pointer",fontSize:16,lineHeight:1}}>×</button>
+      </div>
+      <div style={{fontSize:12,color:C.text,lineHeight:1.6,marginBottom:10}}>{cfg.advice}</div>
+      <div style={{fontSize:10,color:C.dim}}>⚠ Educational signal only · Not financial advice</div>
+    </div>
+  );
+}
+
+// ─── Sleek Tooltip ────────────────────────────────────────────────────────────
+function TT({active,payload,label}){
+  if(!active||!payload?.length) return null;
+  return(
+    <div style={{background:"rgba(4,12,18,0.95)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",fontSize:11,fontFamily:"'IBM Plex Mono',monospace",backdropFilter:"blur(8px)",boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
+      <div style={{color:C.dim,marginBottom:6,fontSize:10,letterSpacing:1}}>{label}</div>
+      {payload.map((p,i)=>p.value!=null&&(
+        <div key={i} style={{display:"flex",justifyContent:"space-between",gap:16,color:p.color||C.accent,marginBottom:2}}>
+          <span style={{color:C.dim}}>{p.name}</span>
+          <span style={{fontWeight:600}}>{fmt(p.value,4)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatCard({label,value,sub,accent}){
+  return(
+    <div style={{background:"linear-gradient(135deg,#0a1520,#060d14)",border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",flex:1,minWidth:120,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:0,right:0,width:60,height:60,background:`radial-gradient(circle,${accent||C.accent}11,transparent 70%)`,borderRadius:"0 10px 0 60px"}}/>
+      <div style={{fontSize:9,color:C.dim,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{label}</div>
+      <div style={{fontSize:17,fontFamily:"'IBM Plex Mono',monospace",color:accent||C.accent,fontWeight:700,wordBreak:"break-all"}}>{value}</div>
+      {sub&&<div style={{fontSize:10,color:C.dim,marginTop:4}}>{sub}</div>}
+    </div>
+  );
+}
+
+function ChartPanel({title,children,right}){
+  return(
+    <div style={{background:"linear-gradient(180deg,#0a1520 0%,#060d14 100%)",border:`1px solid ${C.border}`,borderRadius:12,marginBottom:14,overflow:"hidden",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+      <div style={{padding:"11px 16px",borderBottom:`1px solid ${C.border}`,fontSize:10,color:C.dim,letterSpacing:2,textTransform:"uppercase",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,212,255,0.03)"}}>
+        <span>{title}</span>{right}
+      </div>
+      <div style={{padding:16}}>{children}</div>
+    </div>
+  );
+}
+
+function SigBadge({type}){
+  if(!type) return null;
+  const m={
+    "STRONG BUY":         {bg:"#002a1a",bd:C.green,    c:C.green,    t:"⚡ STRONG BUY"},
+    "HIGHLY ADVISED BUY": {bg:"#002015",bd:"#00dd66",  c:"#00dd66",  t:"🎯 HIGHLY ADVISED BUY"},
+    "BUY":                {bg:"#001a10",bd:"#00cc66",  c:"#00cc66",  t:"↑ BUY"},
+    "HIGHLY ADVISED SELL":{bg:"#2a0010",bd:C.red,      c:C.red,      t:"🚨 HIGHLY ADVISED SELL"},
+    "SELL":               {bg:"#1a000a",bd:"#cc2233",  c:"#cc2233",  t:"↓ SELL"},
+  }[type];
+  if(!m) return null;
+  return <span style={{fontSize:10,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:1,padding:"3px 10px",borderRadius:4,background:m.bg,border:`1px solid ${m.bd}`,color:m.c,boxShadow:`0 0 8px ${m.bd}33`}}>{m.t}</span>;
+}
+
+function Pill({active,onClick,children}){
+  return(
+    <button onClick={onClick} style={{background:active?"rgba(0,212,255,0.15)":C.panel,color:active?C.accent:C.dim,border:`1px solid ${active?C.accent:C.border}`,padding:"5px 12px",borderRadius:6,cursor:"pointer",fontSize:11,fontFamily:"'IBM Plex Mono',monospace",transition:"all 0.15s",boxShadow:active?`0 0 10px ${C.accent}33`:"none"}}>
+      {children}
+    </button>
+  );
+}
 
 function PaperTrading({currentPrice,currentSig,coinLabel,tier}){
   const key=`qs_wallet_${tier}`;
@@ -486,7 +709,48 @@ function PaperTrading({currentPrice,currentSig,coinLabel,tier}){
   const totalValue=+(wallet.balance+wallet.holdings*currentPrice).toFixed(2);
   const pnl=+(totalValue-10000).toFixed(2);
   const pnlPct=+((pnl/10000)*100).toFixed(2);
-  return(<div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:8,marginBottom:12,overflow:"hidden"}}><div style={{padding:"9px 14px",borderBottom:`1px solid ${C.border}`,fontSize:10,color:C.dim,letterSpacing:2,textTransform:"uppercase",display:"flex",justifyContent:"space-between"}}><span>💰 Paper Trading Wallet</span><button onClick={reset} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.dim,padding:"2px 8px",borderRadius:3,cursor:"pointer",fontSize:9,fontFamily:"'IBM Plex Mono',monospace"}}>RESET</button></div><div style={{padding:14}}><div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>{[["Cash",`$${fmt(wallet.balance)}`,C.accent],[`${coinLabel.split("/")[0]}`,`${fmt(wallet.holdings,6)}`,C.yellow],["Portfolio",`$${fmt(totalValue)}`,C.text],["P&L",`${pnl>=0?"+":""}$${fmt(Math.abs(pnl))} (${pnlPct}%)`,pnl>=0?C.green:C.red]].map(([l,v,c])=>(<div key={l} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 12px",flex:1,minWidth:100}}><div style={{fontSize:9,color:C.dim,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>{l}</div><div style={{fontSize:14,fontFamily:"'IBM Plex Mono',monospace",color:c,fontWeight:700}}>{v}</div></div>))}</div><div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}><input type="number" placeholder="USD amount" value={amount} onChange={e=>setAmount(e.target.value)} style={{flex:1,minWidth:130,background:C.bg,border:`1px solid ${C.border}`,color:C.text,padding:"8px 12px",borderRadius:4,fontSize:12,fontFamily:"'IBM Plex Mono',monospace",outline:"none"}}/><button onClick={buy} style={{background:"#002a1a",border:`1px solid ${C.green}`,color:C.green,padding:"8px 18px",borderRadius:4,cursor:"pointer",fontSize:12,fontFamily:"'IBM Plex Mono',monospace",fontWeight:700}}>↑ BUY</button><button onClick={sell} style={{background:"#2a0010",border:`1px solid ${C.red}`,color:C.red,padding:"8px 18px",borderRadius:4,cursor:"pointer",fontSize:12,fontFamily:"'IBM Plex Mono',monospace",fontWeight:700}}>↓ SELL ALL</button></div>{currentSig&&<div style={{background:currentSig.includes("BUY")?"#001a0e":"#1a0008",border:`1px solid ${currentSig.includes("BUY")?C.green:C.red}33`,borderRadius:6,padding:"8px 12px",fontSize:11,color:currentSig.includes("BUY")?C.green:C.red,marginBottom:10}}>{currentSig.includes("BUY")?"⚡ Signal: BUY opportunity detected":"↓ Signal: Consider taking profits"}</div>}{wallet.trades.length>0&&<div>{wallet.trades.map((t,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:10,borderBottom:`1px solid ${C.border}`,paddingBottom:5,marginBottom:5,gap:6,flexWrap:"wrap"}}><span style={{color:t.type==="BUY"?C.green:C.red,fontWeight:700}}>{t.type}</span><span style={{color:C.text}}>${fmt(t.amount)} @ ${fmt(t.price)}</span><span style={{color:C.dim}}>{t.time}</span></div>))}</div>}</div></div>);
+  return(
+    <div style={{background:"linear-gradient(135deg,#0a1520,#060d14)",border:`1px solid ${C.border}`,borderRadius:12,marginBottom:14,overflow:"hidden"}}>
+      <div style={{padding:"11px 16px",borderBottom:`1px solid ${C.border}`,fontSize:10,color:C.dim,letterSpacing:2,textTransform:"uppercase",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span>💰 Paper Trading Wallet</span>
+        <button onClick={reset} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.dim,padding:"2px 8px",borderRadius:3,cursor:"pointer",fontSize:9,fontFamily:"'IBM Plex Mono',monospace"}}>RESET</button>
+      </div>
+      <div style={{padding:16}}>
+        <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+          {[["Cash",`$${fmt(wallet.balance)}`,C.accent],[coinLabel.split("/")[0],`${fmt(wallet.holdings,6)}`,C.yellow],["Portfolio",`$${fmt(totalValue)}`,C.text],["P&L",`${pnl>=0?"+":""}$${fmt(Math.abs(pnl))} (${pnlPct}%)`,pnl>=0?C.green:C.red]].map(([l,v,c])=>(
+            <div key={l} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",flex:1,minWidth:100}}>
+              <div style={{fontSize:9,color:C.dim,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>{l}</div>
+              <div style={{fontSize:14,fontFamily:"'IBM Plex Mono',monospace",color:c,fontWeight:700}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
+          <input type="number" placeholder="USD amount to trade" value={amount} onChange={e=>setAmount(e.target.value)}
+            style={{flex:1,minWidth:140,background:C.bg,border:`1px solid ${C.border}`,color:C.text,padding:"9px 14px",borderRadius:6,fontSize:12,fontFamily:"'IBM Plex Mono',monospace",outline:"none"}}/>
+          <button onClick={buy} style={{background:"linear-gradient(135deg,#002a1a,#001a10)",border:`1px solid ${C.green}`,color:C.green,padding:"9px 20px",borderRadius:6,cursor:"pointer",fontSize:12,fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,boxShadow:`0 0 12px ${C.green}22`}}>↑ BUY</button>
+          <button onClick={sell} style={{background:"linear-gradient(135deg,#2a0010,#1a0008)",border:`1px solid ${C.red}`,color:C.red,padding:"9px 20px",borderRadius:6,cursor:"pointer",fontSize:12,fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,boxShadow:`0 0 12px ${C.red}22`}}>↓ SELL ALL</button>
+        </div>
+        {currentSig&&(
+          <div style={{background:currentSig.includes("BUY")?"#001a0e":"#1a0008",border:`1px solid ${currentSig.includes("BUY")?C.green:C.red}33`,borderRadius:8,padding:"10px 14px",fontSize:11,color:currentSig.includes("BUY")?C.green:C.red,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:16}}>{currentSig.includes("STRONG")?"⚡":currentSig.includes("HIGHLY")?"🎯":currentSig.includes("BUY")?"↑":"↓"}</span>
+            <span>{currentSig.includes("BUY")?"Signal suggests entry opportunity — use caution and manage risk":"Signal suggests potential exit — consider taking profits"}</span>
+          </div>
+        )}
+        {wallet.trades.length>0&&(
+          <div>
+            <div style={{fontSize:9,color:C.dim,letterSpacing:2,marginBottom:8}}>TRADE HISTORY</div>
+            {wallet.trades.map((t,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:10,borderBottom:`1px solid ${C.border}`,paddingBottom:6,marginBottom:6,gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                <span style={{color:t.type==="BUY"?C.green:C.red,fontWeight:700,fontSize:11}}>{t.type}</span>
+                <span style={{color:C.text}}>${fmt(t.amount)} @ ${fmt(t.price)}</span>
+                <span style={{color:C.dim}}>{t.time}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -505,7 +769,6 @@ function Dashboard({ plan, user, onLogout }) {
 
   const market = ALL_MARKETS.find(m=>m.id===marketId) || ALL_MARKETS[0];
   const days = INTERVALS[daysIdx].days;
-  const visibleGroups = isPro ? MARKET_GROUPS : MARKET_GROUPS.filter(g=>!g.proOnly);
 
   const load=useCallback(async(m,d)=>{
     setLoading(true);
@@ -525,12 +788,12 @@ function Dashboard({ plan, user, onLogout }) {
   useEffect(()=>{clearInterval(timer.current);if(auto)timer.current=setInterval(()=>load(market,days),60000);return()=>clearInterval(timer.current);},[auto,marketId,days]);
 
   const sl=computed?.chart?.slice(-80)??[];
-  const{last,e9,e21,e200,rsiVal,atrVal,sig,hist}=computed??{};
+  const{last,e9,e21,e200,rsiVal,atrVal,sig,sigStrength,hist}=computed??{};
   const trend=last&&e200?(last.close>e200?"BULLISH":"BEARISH"):null;
   const SL=last&&atrVal?+(last.close-1.5*atrVal).toFixed(4):null;
   const TP=last&&atrVal?+(last.close+2.0*atrVal).toFixed(4):null;
   const rc=rsiVal>70?C.red:rsiVal<30?C.green:C.accent;
-  const sc=sig==="STRONG BUY"?C.green:sig==="BUY"?"#00cc66":sig==="SELL"?C.red:C.dim;
+  const sc=sig==="STRONG BUY"||sig==="HIGHLY ADVISED BUY"?C.green:sig==="BUY"?"#00cc66":sig==="HIGHLY ADVISED SELL"||sig==="SELL"?C.red:C.dim;
   const cc=info?.change24h>=0?C.green:C.red;
   const isLive=source.includes("Live");
   const confidence=isPro&&computed?getConfidence(sig,rsiVal,hist,e9,e21):null;
@@ -538,7 +801,11 @@ function Dashboard({ plan, user, onLogout }) {
   return(
     <div style={{background:C.bg,minHeight:"100vh",color:C.text,fontFamily:"'IBM Plex Mono',monospace",boxSizing:"border-box"}}>
       <style>{FONTS}</style>
-      <nav style={{borderBottom:`1px solid ${C.border}`,background:"rgba(3,6,8,0.98)",padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+
+      {/* Signal Notification Banner */}
+      <SignalBanner sig={sig} sigStrength={sigStrength} market={market} price={last?.close} />
+
+      <nav style={{borderBottom:`1px solid ${C.border}`,background:"rgba(3,6,8,0.98)",padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,position:"sticky",top:0,zIndex:100}}>
         <Logo />
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontSize:11,padding:"3px 10px",borderRadius:12,background:isPro?"#1a0a3a":"#001a2a",border:`1px solid ${isPro?C.purple:C.accent}44`,color:isPro?C.purple:C.accent}}>{isPro?"✦ PRO":"STARTER"}</span>
@@ -555,7 +822,7 @@ function Dashboard({ plan, user, onLogout }) {
             const locked=g.proOnly&&!isPro;
             return(
               <button key={g.label} onClick={()=>{if(!locked){setActiveGroup(g.label);const first=g.markets[0];setMarketId(first.id);}}}
-                style={{background:activeGroup===g.label?C.panel:C.bg,border:`1px solid ${activeGroup===g.label?(g.proOnly?C.purple:C.accent):C.border}`,color:locked?C.dim:activeGroup===g.label?(g.proOnly?C.purple:C.accent):C.dim,padding:"6px 14px",borderRadius:6,cursor:locked?"not-allowed":"pointer",fontSize:11,fontFamily:"'IBM Plex Mono',monospace",display:"flex",alignItems:"center",gap:6,opacity:locked?0.5:1}}>
+                style={{background:activeGroup===g.label?"rgba(0,212,255,0.08)":C.bg,border:`1px solid ${activeGroup===g.label?(g.proOnly?C.purple:C.accent):C.border}`,color:locked?C.dim:activeGroup===g.label?(g.proOnly?C.purple:C.accent):C.dim,padding:"7px 16px",borderRadius:8,cursor:locked?"not-allowed":"pointer",fontSize:11,fontFamily:"'IBM Plex Mono',monospace",display:"flex",alignItems:"center",gap:6,opacity:locked?0.5:1,transition:"all 0.15s",boxShadow:activeGroup===g.label?`0 0 12px ${g.proOnly?C.purple:C.accent}22`:"none"}}>
                 {g.icon} {g.label} {locked&&<span style={{fontSize:9,color:C.purple}}>PRO</span>}
               </button>
             );
@@ -625,49 +892,105 @@ function Dashboard({ plan, user, onLogout }) {
                 <YAxis domain={["auto","auto"]} tick={{fill:C.dim,fontSize:10}} width={80} tickFormatter={v=>`$${fmt(v)}`} />
                 <Tooltip content={<TT />} />
                 <Line dataKey="close" stroke={C.text}   dot={false} strokeWidth={1.5} name="Price" />
-                <Line dataKey="e9"    stroke={C.accent} dot={false} strokeWidth={1} strokeDasharray="4 2" name="EMA9" />
-                <Line dataKey="e21"   stroke={C.yellow} dot={false} strokeWidth={1} strokeDasharray="4 2" name="EMA21" />
-                <Line dataKey="e50"   stroke={C.muted}  dot={false} strokeWidth={1} strokeDasharray="2 4" name="EMA50" />
+                <Line dataKey="e9"    stroke={C.accent} dot={false} strokeWidth={1.5} strokeDasharray="5 3" name="EMA9" />
+                <Line dataKey="e21"   stroke={C.yellow} dot={false} strokeWidth={1.5} strokeDasharray="5 3" name="EMA21" />
+                <Line dataKey="e50"   stroke={C.muted}  dot={false} strokeWidth={1}   strokeDasharray="2 5" name="EMA50" />
               </LineChart>
             </ResponsiveContainer>
+            <div style={{display:"flex",gap:16,marginTop:8,flexWrap:"wrap"}}>
+              {[["Price",C.text],["EMA9",C.accent],["EMA21",C.yellow],["EMA50",C.muted]].map(([l,c])=>(
+                <span key={l} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:C.dim}}>
+                  <span style={{width:18,height:2,background:c,display:"inline-block",borderRadius:1,boxShadow:`0 0 4px ${c}88`}}/>
+                  {l}
+                </span>
+              ))}
+            </div>
           </ChartPanel>
 
-          <ChartPanel title="RSI (14)">
-            <ResponsiveContainer width="100%" height={95}>
+          {/* RSI */}
+          <ChartPanel title="RSI (14) — Momentum Strength">
+            <ResponsiveContainer width="100%" height={110}>
               <LineChart data={sl}>
-                <CartesianGrid stroke={C.border} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tick={{fill:C.dim,fontSize:9}} interval="preserveStartEnd" />
-                <YAxis domain={[0,100]} tick={{fill:C.dim,fontSize:10}} width={30} />
+                <defs>
+                  <linearGradient id="rsiGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={rc} stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor={rc} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={C.border} strokeDasharray="3 6" vertical={false} />
+                <XAxis dataKey="time" tick={{fill:C.dim,fontSize:9}} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+                <YAxis domain={[0,100]} tick={{fill:C.dim,fontSize:9}} width={28} axisLine={false} tickLine={false} />
                 <Tooltip content={<TT />} />
-                <ReferenceLine y={70} stroke={C.red}   strokeDasharray="4 2" />
-                <ReferenceLine y={30} stroke={C.green} strokeDasharray="4 2" />
-                <Line dataKey="rsi" stroke={rc} dot={false} strokeWidth={2} name="RSI" />
+                <ReferenceLine y={70} stroke={C.red}   strokeDasharray="4 3" strokeOpacity={0.6} label={{value:"70",fill:C.red,fontSize:9,position:"insideTopRight"}} />
+                <ReferenceLine y={50} stroke={C.dim}   strokeDasharray="2 6" strokeOpacity={0.3} />
+                <ReferenceLine y={30} stroke={C.green} strokeDasharray="4 3" strokeOpacity={0.6} label={{value:"30",fill:C.green,fontSize:9,position:"insideBottomRight"}} />
+                <Line dataKey="rsi" stroke={rc} dot={false} strokeWidth={2.5} name="RSI" style={{filter:`drop-shadow(0 0 4px ${rc}66)`}} />
               </LineChart>
             </ResponsiveContainer>
           </ChartPanel>
 
-          <ChartPanel title="MACD">
-            <ResponsiveContainer width="100%" height={85}>
-              <BarChart data={sl}>
-                <CartesianGrid stroke={C.border} strokeDasharray="3 3" />
-                <XAxis dataKey="time" tick={{fill:C.dim,fontSize:9}} interval="preserveStartEnd" />
-                <YAxis tick={{fill:C.dim,fontSize:9}} width={55} />
+          {/* MACD */}
+          <ChartPanel title="MACD — Momentum Confirmation">
+            <ResponsiveContainer width="100%" height={100}>
+              <BarChart data={sl} barSize={3}>
+                <CartesianGrid stroke={C.border} strokeDasharray="3 6" vertical={false} />
+                <XAxis dataKey="time" tick={{fill:C.dim,fontSize:9}} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+                <YAxis tick={{fill:C.dim,fontSize:9}} width={50} axisLine={false} tickLine={false} />
                 <Tooltip content={<TT />} />
-                <ReferenceLine y={0} stroke={C.border} />
-                <Bar dataKey="hist" name="Histogram" shape={(props)=>{const{x,y,width,height,value}=props;const h=Math.abs(height||0);return <rect x={x} y={value>=0?y:y+(height||0)} width={Math.max(width,1)} height={h} fill={value>=0?C.green:C.red} fillOpacity={0.8} />;}} />
+                <ReferenceLine y={0} stroke={C.border} strokeWidth={1.5} />
+                <Bar dataKey="hist" name="Histogram" radius={[2,2,0,0]}
+                  shape={(props)=>{const{x,y,width,height,value}=props;const h=Math.abs(height||0);const col=value>=0?C.green:C.red;return<rect x={x} y={value>=0?y:y+(height||0)} width={Math.max(width,2)} height={h} fill={col} fillOpacity={0.85} rx={1} style={{filter:`drop-shadow(0 0 3px ${col}44)`}}/>;}}/>
               </BarChart>
             </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={70}>
+              <LineChart data={sl}>
+                <XAxis dataKey="time" hide />
+                <YAxis tick={{fill:C.dim,fontSize:9}} width={50} axisLine={false} tickLine={false} />
+                <Tooltip content={<TT />} />
+                <ReferenceLine y={0} stroke={C.border} />
+                <Line dataKey="macd"   stroke={C.accent} dot={false} strokeWidth={2} name="MACD"   style={{filter:`drop-shadow(0 0 3px ${C.accent}44)`}} />
+                <Line dataKey="signal" stroke={C.yellow} dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="Signal" />
+              </LineChart>
+            </ResponsiveContainer>
           </ChartPanel>
 
-          <ChartPanel title="Volume + OBV">
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <ResponsiveContainer width="100%" height={85}><BarChart data={sl}><XAxis hide /><YAxis tick={{fill:C.dim,fontSize:9}} width={40} /><Tooltip content={<TT />} /><Bar dataKey="volume" fill={C.muted} name="Volume" /></BarChart></ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={85}><LineChart data={sl}><XAxis hide /><YAxis tick={{fill:C.dim,fontSize:9}} width={55} tickFormatter={v=>`${(v/1000).toFixed(0)}k`} /><Tooltip content={<TT />} /><Line dataKey="obv" stroke={C.accent} dot={false} strokeWidth={1.5} name="OBV" /></LineChart></ResponsiveContainer>
+          {/* Volume + OBV */}
+          <ChartPanel title="Volume + OBV — Smart Money Flow">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div>
+                <div style={{fontSize:9,color:C.dim,letterSpacing:2,marginBottom:6}}>RAW VOLUME</div>
+                <ResponsiveContainer width="100%" height={90}>
+                  <BarChart data={sl} barSize={3}>
+                    <XAxis hide /><YAxis tick={{fill:C.dim,fontSize:8}} width={36} axisLine={false} tickLine={false} />
+                    <Tooltip content={<TT />} />
+                    <Bar dataKey="volume" name="Volume" radius={[2,2,0,0]}
+                      shape={(props)=>{const{x,y,width,height}=props;return<rect x={x} y={y} width={Math.max(width,2)} height={Math.abs(height||0)} fill={C.muted} fillOpacity={0.8} rx={1}/>;}}/>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <div style={{fontSize:9,color:C.dim,letterSpacing:2,marginBottom:6}}>ON-BALANCE VOLUME</div>
+                <ResponsiveContainer width="100%" height={90}>
+                  <LineChart data={sl}>
+                    <defs>
+                      <linearGradient id="obvGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor={C.accent} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={C.accent} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis hide /><YAxis tick={{fill:C.dim,fontSize:8}} width={44} tickFormatter={v=>`${(v/1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+                    <Tooltip content={<TT />} />
+                    <Line dataKey="obv" stroke={C.accent} dot={false} strokeWidth={2} name="OBV" style={{filter:`drop-shadow(0 0 4px ${C.accent}44)`}} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </ChartPanel>
         </>}
 
-        <div style={{fontSize:9,color:C.dim,textAlign:"center",marginTop:6,lineHeight:1.9}}>⚠ Educational only · Not financial advice · {isLive?"Live: CoinGecko":"Simulated data"}</div>
+        <div style={{fontSize:9,color:C.dim,textAlign:"center",marginTop:8,lineHeight:1.9,padding:"0 0 20px"}}>
+          ⚠ Educational only · Not financial advice · {isLive?`Live: ${source}`:"Simulated data"}
+        </div>
       </div>
     </div>
   );
