@@ -554,14 +554,22 @@ function SignalBanner({ sig, sigStrength, market, price }) {
       position:"fixed", top:70, right:20, zIndex:999, width:320,
       background:cfg.bg, border:`1px solid ${cfg.border}`,
       borderRadius:12, padding:"16px 18px", boxShadow:`0 0 30px ${cfg.border}44`,
-      animation:"slideIn 0.4s ease forwards",
+      animation:"slideIn 0.4s ease forwards, borderBlink 1s ease-in-out infinite",
     }}>
-      <style>{`@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+      <style>{`
+        @keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes borderBlink{0%,100%{box-shadow:0 0 30px ${cfg.border}44}50%{box-shadow:0 0 60px ${cfg.border}99}}
+        @keyframes iconPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+      `}</style>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:20}}>{cfg.icon}</span>
+          <span style={{fontSize:20,display:"inline-block",animation:"iconPulse 0.8s ease-in-out infinite"}}>{cfg.icon}</span>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:cfg.color,letterSpacing:1,fontFamily:"'IBM Plex Mono',monospace"}}>{cfg.label}</div>
+            <div style={{fontSize:11,fontWeight:700,color:cfg.color,letterSpacing:1,fontFamily:"'IBM Plex Mono',monospace",display:"flex",alignItems:"center",gap:6}}>
+              <span style={{width:7,height:7,borderRadius:"50%",background:cfg.color,display:"inline-block",animation:"dotBlink 0.8s ease-in-out infinite",boxShadow:`0 0 6px ${cfg.color}`}}/>
+              <style>{`@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:0.1}}`}</style>
+              {cfg.label}
+            </div>
             <div style={{fontSize:10,color:C.dim,marginTop:2}}>{market?.label} · ${fmt(price)}</div>
           </div>
         </div>
@@ -708,14 +716,25 @@ function Dashboard({ plan, user, onLogout }) {
     setLoading(true);
     const [liveOHLC,liveTicker]=await Promise.all([tryFetchOHLC(m,d),tryFetchTicker(m)]);
     if(liveOHLC&&liveOHLC.length>=30){
-      setInfo(liveTicker);setComputed(buildComputed(liveOHLC));
+      setInfo(liveTicker);
+      setComputed(buildComputed(liveOHLC));
       setSource(m.type==="twelve"?"Twelve Data Live":"CoinGecko Live");
     } else {
-      const sim=simulateOHLC(m.seed,m.vol,120);const lastPrice=sim[sim.length-1].close;
-      setInfo({price:lastPrice,change24h:+(Math.random()*4-2).toFixed(2),high24h:+(lastPrice*1.015).toFixed(4),low24h:+(lastPrice*0.985).toFixed(4),vol24h:m.seed*80000});
-      setComputed(buildComputed(sim));setSource("Simulated (API unavailable)");
+      // Always fall back to simulated so charts never go blank
+      const sim=simulateOHLC(m.seed,m.vol,120);
+      const lastPrice=sim[sim.length-1].close;
+      setInfo({
+        price:lastPrice,
+        change24h:+(Math.random()*4-2).toFixed(2),
+        high24h:+(lastPrice*1.015).toFixed(4),
+        low24h:+(lastPrice*0.985).toFixed(4),
+        vol24h:m.seed*80000
+      });
+      setComputed(buildComputed(sim));
+      setSource(m.type==="twelve"?"Simulated (market closed or API limit)":"Simulated");
     }
-    setUpdated(new Date().toLocaleTimeString());setLoading(false);
+    setUpdated(new Date().toLocaleTimeString());
+    setLoading(false);
   },[]);
 
   useEffect(()=>{load(market,days);},[marketId,days]);
@@ -772,7 +791,7 @@ function Dashboard({ plan, user, onLogout }) {
               ))}
             </div>
             <div style={{fontSize:22,fontWeight:700,color:C.accent}}>{market.label}&nbsp;{info&&<span style={{color:C.text}}>${fmt(info.price)}</span>}{info&&<span style={{fontSize:13,color:cc,marginLeft:8}}>{fmtP(info.change24h)}</span>}</div>
-            {info&&<div style={{fontSize:10,color:C.dim,marginTop:3}}>H: ${fmt(info.high24h)} · L: ${fmt(info.low24h)} · <span style={{color:market.type==="sim"?C.yellow:C.green}}>{market.type==="sim"?"◐ Simulated data":"● Live data"}</span></div>}
+            {info&&<div style={{fontSize:10,color:C.dim,marginTop:3}}>H: ${fmt(info.high24h)} · L: ${fmt(info.low24h)} · <span style={{color:isLive?C.green:C.yellow}}>{isLive?`● ${source}`:"◐ Simulated (market may be closed)"}</span></div>}
           </div>
           <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
             {INTERVALS.map((iv,i)=><Pill key={iv.label} active={daysIdx===i} onClick={()=>setDaysIdx(i)}>{iv.label}</Pill>)}
@@ -782,7 +801,18 @@ function Dashboard({ plan, user, onLogout }) {
           </div>
         </div>
 
-        {loading&&!computed&&<div style={{textAlign:"center",color:C.accent,padding:40}}>Loading live data…</div>}
+        {loading&&!computed&&<div style={{textAlign:"center",color:C.accent,padding:40,fontSize:13}}>
+          <div style={{fontSize:24,marginBottom:10,animation:"spin 1s linear infinite"}}>◌</div>
+          <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+          Fetching live data…
+        </div>}
+
+        {!loading&&!computed&&<div style={{textAlign:"center",padding:40}}>
+          <div style={{fontSize:32,marginBottom:12}}>⚠</div>
+          <div style={{color:C.yellow,fontSize:13,marginBottom:8}}>Could not load live data</div>
+          <div style={{color:C.dim,fontSize:11,marginBottom:20}}>Market may be closed or API rate limit reached. Simulated data loaded instead.</div>
+          <button onClick={()=>load(market,days)} style={{background:C.panel,border:`1px solid ${C.accent}`,color:C.accent,padding:"8px 20px",borderRadius:6,cursor:"pointer",fontSize:12,fontFamily:"'IBM Plex Mono',monospace"}}>↻ Retry Live Data</button>
+        </div>}
 
         {computed&&<>
           <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
