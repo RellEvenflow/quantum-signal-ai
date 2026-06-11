@@ -395,72 +395,6 @@ function simulateOHLC(seed, volatility, count=120) {
 }
 
 async function fetchTwelveOHLC(market, tdInterval) {
-  try {
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(market.tdSymbol)}&interval=${tdInterval}&outputsize=120&apikey=${TWELVE_KEY}`;
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return null;
-    const d = await r.json();
-    if (d.status === "error" || !d.values || d.values.length < 10) return null;
-    return d.values.slice().reverse().map((k, i) => ({
-      i,
-      time: new Date(k.datetime).toLocaleDateString([], { month:"short", day:"numeric" }),
-      open: parseFloat(k.open), high: parseFloat(k.high),
-      low:  parseFloat(k.low),  close: parseFloat(k.close),
-      volume: parseFloat(k.volume || 500),
-    }));
-  } catch { return null; }
-}
-
-async function fetchTwelveQuote(market) {
-  try {
-    const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(market.tdSymbol)}&apikey=${TWELVE_KEY}`;
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return null;
-    const d = await r.json();
-    if (d.status === "error" || !d.close) return null;
-    return {
-      price:     parseFloat(d.close),
-      change24h: parseFloat(d.percent_change),
-      high24h:   parseFloat(d.high),
-      low24h:    parseFloat(d.low),
-      vol24h:    parseFloat(d.volume || 0),
-    };
-  } catch { return null; }
-}
-
-async function tryFetchOHLC(market, days) {
-  if (market.type === "crypto") {
-    try {
-      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}/ohlc?vs_currency=usd&days=${days}`,{signal:AbortSignal.timeout(6000)});
-      if(!r.ok) return null;
-      const raw=await r.json();
-      if(!Array.isArray(raw)||raw.length<10) return null;
-      return raw.map((k,i)=>({i,time:new Date(k[0]).toLocaleDateString([],{month:"short",day:"numeric"}),open:k[1],high:k[2],low:k[3],close:k[4],volume:Math.abs(k[2]-k[3])*500+Math.random()*300}));
-    } catch { return null; }
-  }
-  if (market.type === "twelve") {
-    const iv = INTERVALS.find(iv=>iv.days===days)?.tdInterval || "1h";
-    return await fetchTwelveOHLC(market, iv);
-  }
-  return null;
-}
-
-async function tryFetchTicker(market) {
-  if (market.type === "crypto") {
-    try {
-      const r=await fetch(`https://api.coingecko.com/api/v3/coins/${market.id}?localization=false&tickers=false&community_data=false&developer_data=false`,{signal:AbortSignal.timeout(6000)});
-      if(!r.ok) return null;
-      const d=await r.json();
-      return {price:d.market_data.current_price.usd,change24h:d.market_data.price_change_percentage_24h,high24h:d.market_data.high_24h.usd,low24h:d.market_data.low_24h.usd,vol24h:d.market_data.total_volume.usd};
-    } catch { return null; }
-  }
-  if (market.type === "twelve") {
-    return await fetchTwelveQuote(market);
-  }
-  return null;
-}
-
-async function fetchTwelveOHLC(market, tdInterval) {
   // Try direct first, then CORS proxy as fallback
   const urls = [
     `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(market.tdSymbol)}&interval=${tdInterval}&outputsize=120&apikey=${TWELVE_KEY}`,
@@ -1228,6 +1162,7 @@ export default function App() {
   if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
+
 
 
 
