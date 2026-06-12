@@ -395,50 +395,38 @@ function simulateOHLC(seed, volatility, count=120) {
 }
 
 async function fetchTwelveOHLC(market, tdInterval) {
-  // Try direct first, then CORS proxy as fallback
-  const urls = [
-    `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(market.tdSymbol)}&interval=${tdInterval}&outputsize=120&apikey=${TWELVE_KEY}`,
-    `https://corsproxy.io/?${encodeURIComponent(`https://api.twelvedata.com/time_series?symbol=${market.tdSymbol}&interval=${tdInterval}&outputsize=120&apikey=${TWELVE_KEY}`)}`,
-  ];
-  for (const url of urls) {
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!r.ok) continue;
-      const d = await r.json();
-      if (d.status === "error" || !d.values || d.values.length < 10) continue;
-      return d.values.slice().reverse().map((k, i) => ({
-        i,
-        time: new Date(k.datetime).toLocaleDateString([], { month:"short", day:"numeric" }),
-        open: parseFloat(k.open), high: parseFloat(k.high),
-        low:  parseFloat(k.low),  close: parseFloat(k.close),
-        volume: parseFloat(k.volume || 500),
-      }));
-    } catch { continue; }
-  }
-  return null;
+  // Call our own Netlify proxy — no CORS issues
+  try {
+    const url = `/api/market?symbol=${encodeURIComponent(market.tdSymbol)}&interval=${tdInterval}&outputsize=120&type=timeseries`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.status === "error" || !d.values || d.values.length < 10) return null;
+    return d.values.slice().reverse().map((k, i) => ({
+      i,
+      time: new Date(k.datetime).toLocaleDateString([], { month:"short", day:"numeric" }),
+      open: parseFloat(k.open), high: parseFloat(k.high),
+      low:  parseFloat(k.low),  close: parseFloat(k.close),
+      volume: parseFloat(k.volume || 500),
+    }));
+  } catch { return null; }
 }
 
 async function fetchTwelveQuote(market) {
-  const urls = [
-    `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(market.tdSymbol)}&apikey=${TWELVE_KEY}`,
-    `https://corsproxy.io/?${encodeURIComponent(`https://api.twelvedata.com/quote?symbol=${market.tdSymbol}&apikey=${TWELVE_KEY}`)}`,
-  ];
-  for (const url of urls) {
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!r.ok) continue;
-      const d = await r.json();
-      if (d.status === "error" || !d.close) continue;
-      return {
-        price:     parseFloat(d.close),
-        change24h: parseFloat(d.percent_change),
-        high24h:   parseFloat(d.high),
-        low24h:    parseFloat(d.low),
-        vol24h:    parseFloat(d.volume || 0),
-      };
-    } catch { continue; }
-  }
-  return null;
+  try {
+    const url = `/api/market?symbol=${encodeURIComponent(market.tdSymbol)}&type=quote`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.status === "error" || !d.close) return null;
+    return {
+      price:     parseFloat(d.close),
+      change24h: parseFloat(d.percent_change),
+      high24h:   parseFloat(d.high),
+      low24h:    parseFloat(d.low),
+      vol24h:    parseFloat(d.volume || 0),
+    };
+  } catch { return null; }
 }
 
 async function tryFetchOHLC(market, days) {
@@ -1192,7 +1180,6 @@ export default function App() {
   if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
-
 
 
 
