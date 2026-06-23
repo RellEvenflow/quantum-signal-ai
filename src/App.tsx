@@ -1307,13 +1307,23 @@ function LandingPage({ onGetStarted, onAdminLogin }) {
         <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
           <button onClick={onGetStarted} style={{background:"transparent",color:C.accent,border:`2px solid ${C.accent}`,padding:"15px 32px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,letterSpacing:1}}>START AT $49/MO</button>
           <button onClick={onGetStarted} style={{background:C.purple,color:"#fff",border:"none",padding:"15px 32px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,letterSpacing:1,animation:"glowPurple 2.5s infinite"}}>GET PRO — $149/MO ✦</button>
+          <button onClick={onGetStarted} style={{background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",border:"none",padding:"15px 32px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,letterSpacing:1}}>🤖 BOT TIER — $299/MO</button>
         </div>
         <div style={{marginTop:16,fontSize:11,color:C.dim}}>Cancel anytime · No contracts · Educational use only · US-based</div>
       </div>
 
-      <div style={{maxWidth:1100,margin:"0 auto",padding:"20px 40px 80px"}}>
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 40px 80px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:18}}>
-          {[{icon:"📈",title:"5-Indicator Engine",desc:"EMA, RSI, MACD, OBV & ATR combined into one powerful confluence signal."},{icon:"⚡",title:"Real-Time Signals",desc:"Pro: signals fire instantly. Starter: 5–10 curated signals per week."},{icon:"🤖",title:"AI Confidence Score",desc:"Pro exclusive: AI scores each signal 0–100 based on indicator strength."},{icon:"📱",title:"Mobile Alerts",desc:"Email, SMS & push notifications so you never miss a signal."},{icon:"💰",title:"Paper Trading",desc:"Both plans include a $10,000 virtual wallet to practice risk-free."},{icon:"🛡",title:"Risk Management",desc:"Stop loss at 1.5×ATR and take profit at 2×ATR auto-calculated."}].map(f=>(
+          {[
+            {icon:"📈",title:"5-Indicator Engine",  desc:"EMA, RSI, MACD, OBV & ATR combined into one powerful confluence signal."},
+            {icon:"⚡",title:"Real-Time Signals",   desc:"Pro: signals fire instantly. Starter: 5–10 curated signals per week."},
+            {icon:"🤖",title:"AI Confidence Score", desc:"Pro exclusive: AI scores each signal 0–100 based on indicator strength."},
+            {icon:"📱",title:"Mobile Alerts",       desc:"Email, SMS & push notifications so you never miss a signal."},
+            {icon:"💰",title:"Paper Trading",        desc:"All plans include a $10,000 virtual wallet to practice risk-free."},
+            {icon:"🛡",title:"Risk Management",     desc:"Stop loss at 1.5×ATR and take profit at 2×ATR auto-calculated."},
+            {icon:"🔗",title:"Auto-Trading Bot",    desc:"Bot Tier: connects to your Alpaca or Coinbase account and executes trades automatically."},
+            {icon:"⛔",title:"Emergency Stop",      desc:"Bot Tier: one-click kill switch cancels all pending orders instantly."},
+          ].map(f=>(
             <div key={f.title} style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,padding:"22px 20px"}}>
               <div style={{fontSize:26,marginBottom:10}}>{f.icon}</div>
               <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,color:"#fff",marginBottom:7}}>{f.title}</div>
@@ -1322,22 +1332,72 @@ function LandingPage({ onGetStarted, onAdminLogin }) {
           ))}
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:24,marginTop:60}}>
+        {/* Pricing section header */}
+        <div style={{textAlign:"center",marginTop:70,marginBottom:40}}>
+          <div style={{fontSize:10,color:C.accent,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Pricing</div>
+          <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:32,fontWeight:800,color:"#fff",marginBottom:10}}>Choose Your Edge</h2>
+          <p style={{color:C.dim,fontSize:14}}>Start free · Cancel anytime · No contracts</p>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
+
+          {/* Starter */}
           <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:16,padding:"36px 28px"}}>
             <div style={{fontSize:10,color:C.accent,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Starter</div>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:48,fontWeight:800,color:"#fff",lineHeight:1}}>$49</div>
             <div style={{color:C.dim,fontSize:12,marginBottom:20}}>/month</div>
-            {["5–10 signals/week","Email, SMS & push alerts","Basic crypto dashboard","$10,000 paper trading","Stop loss & take profit"].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:8}}><span style={{color:C.green}}>✓</span><span style={{fontSize:12,color:C.text}}>{f}</span></div>)}
-            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:"transparent",color:C.accent,border:`2px solid ${C.accent}`,padding:"12px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET STARTED →</button>
+            {[
+              "5–10 curated signals/week",
+              "Email, SMS & push alerts",
+              "Basic crypto dashboard (5 pairs)",
+              "$10,000 paper trading wallet",
+              "Stop loss & take profit levels",
+              "Community Discord access",
+            ].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:10}}><span style={{color:C.green,flexShrink:0}}>✓</span><span style={{fontSize:12,color:C.text,lineHeight:1.5}}>{f}</span></div>)}
+            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:"transparent",color:C.accent,border:`2px solid ${C.accent}`,padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET STARTED →</button>
           </div>
+
+          {/* Pro */}
           <div style={{background:"#0d0820",border:`2px solid ${C.purple}`,borderRadius:16,padding:"36px 28px",position:"relative"}}>
             <div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",background:C.purple,color:"#fff",fontSize:10,fontWeight:700,letterSpacing:2,padding:"4px 18px",borderRadius:20}}>MOST POPULAR</div>
             <div style={{fontSize:10,color:C.purple,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>✦ Pro</div>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:48,fontWeight:800,color:"#fff",lineHeight:1}}>$149</div>
             <div style={{color:C.dim,fontSize:12,marginBottom:20}}>/month</div>
-            {["Real-time signals","AI Confidence Score","Stocks, options, crypto, forex","Advanced risk management","$10,000 paper trading","Priority support"].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:8}}><span style={{color:C.purple}}>✦</span><span style={{fontSize:12,color:C.text}}>{f}</span></div>)}
-            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:C.purple,color:"#fff",border:"none",padding:"12px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET PRO →</button>
+            {[
+              "Real-time signals as they fire",
+              "AI Confidence Score per signal",
+              "Stocks, options, crypto & forex",
+              "Advanced risk management",
+              "Position sizing calculator",
+              "$10,000 paper trading wallet",
+              "Priority support",
+            ].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:10}}><span style={{color:C.purple,flexShrink:0}}>✦</span><span style={{fontSize:12,color:C.text,lineHeight:1.5}}>{f}</span></div>)}
+            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:C.purple,color:"#fff",border:"none",padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET PRO →</button>
           </div>
+
+          {/* Bot */}
+          <div style={{background:"#120800",border:`2px solid ${C.orange}`,borderRadius:16,padding:"36px 28px",position:"relative",boxShadow:`0 0 30px ${C.orange}22`}}>
+            <div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",fontSize:10,fontWeight:700,letterSpacing:2,padding:"4px 18px",borderRadius:20}}>🤖 AUTO-TRADER</div>
+            <div style={{fontSize:10,color:C.orange,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>⚡ Bot Tier</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:48,fontWeight:800,color:"#fff",lineHeight:1}}>$299</div>
+            <div style={{color:C.dim,fontSize:12,marginBottom:20}}>/month</div>
+            {[
+              "Everything in Pro plan",
+              "Auto-executes trades on YOUR account",
+              "Connect Alpaca (stocks + crypto)",
+              "Connect Coinbase Advanced (crypto)",
+              "Customizable risk % per trade",
+              "Max open trades control",
+              "Emergency stop button",
+              "Full live trade log & P&L tracking",
+              "Dedicated support",
+            ].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:10}}><span style={{color:C.orange,flexShrink:0}}>⚡</span><span style={{fontSize:12,color:C.text,lineHeight:1.5}}>{f}</span></div>)}
+            <div style={{marginTop:14,background:"#1a0800",border:`1px solid ${C.orange}33`,borderRadius:6,padding:"10px 12px",fontSize:11,color:C.orange,marginBottom:16,lineHeight:1.6}}>
+              ⚠ Trades execute on your own broker account. You maintain full control at all times.
+            </div>
+            <button onClick={onGetStarted} style={{width:"100%",background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",border:"none",padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET BOT TIER →</button>
+          </div>
+
         </div>
       </div>
 
