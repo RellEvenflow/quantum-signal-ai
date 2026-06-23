@@ -7,7 +7,7 @@ const STRIPE_PK = "pk_live_51TRM7tK4Z1aqO4qojUT2oZU1VUcb8Po4LfJr0YajFYD47khTYuar
 const C = {
   bg:"#030608", panel:"#080f14", border:"#0c1e2e",
   accent:"#00d4ff", green:"#00ff88", red:"#ff3355",
-  yellow:"#ffc400", purple:"#a855f7", muted:"#1e3a4a",
+  yellow:"#ffc400", purple:"#a855f7", orange:"#ff6b00", muted:"#1e3a4a",
   text:"#a8c8e0", dim:"#2a5060"
 };
 const fmt = (n, d=2) => n!=null ? Number(n).toLocaleString("en-US",{maximumFractionDigits:d}) : "—";
@@ -127,6 +127,38 @@ function PlanPage({ onSelect, onBack }) {
               SELECT PRO →
             </div>
           </div>
+
+          {/* Bot */}
+          <div onClick={()=>onSelect("bot")} style={{ background:"#120800", border:`2px solid ${C.orange}`, borderRadius:16, padding:"36px 28px", cursor:"pointer", transition:"all 0.2s", position:"relative" }}
+            onMouseOver={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow=`0 0 50px ${C.orange}44`}}
+            onMouseOut={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
+            <div style={{ position:"absolute", top:-14, left:"50%", transform:"translateX(-50%)", background:`linear-gradient(90deg,${C.orange},#ff9500)`, color:"#fff", fontSize:10, fontWeight:700, letterSpacing:2, padding:"4px 18px", borderRadius:20 }}>🤖 AUTOMATED BOT</div>
+            <div style={{ fontSize:10, color:C.orange, letterSpacing:3, textTransform:"uppercase", marginBottom:12 }}>⚡ Bot Tier</div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:48, fontWeight:800, color:"#fff", lineHeight:1 }}>$299</div>
+            <div style={{ color:C.dim, fontSize:12, marginBottom:24 }}>/month</div>
+            {[
+              "Everything in Pro plan",
+              "Auto-executes trades on YOUR account",
+              "Connect Alpaca (stocks + crypto)",
+              "Connect Coinbase Advanced (crypto)",
+              "Set risk limits & position sizing",
+              "Bot runs 24/7 on live signals",
+              "Full trade log & performance stats",
+              "Emergency stop button",
+              "Dedicated support",
+            ].map(f=>(
+              <div key={f} style={{ display:"flex", gap:10, marginBottom:10, alignItems:"flex-start" }}>
+                <span style={{ color:C.orange, flexShrink:0 }}>⚡</span>
+                <span style={{ fontSize:12, color:C.text, lineHeight:1.5 }}>{f}</span>
+              </div>
+            ))}
+            <div style={{ marginTop:16, background:"#1a0800", border:`1px solid ${C.orange}44`, borderRadius:6, padding:"10px 14px", fontSize:11, color:C.orange, lineHeight:1.6 }}>
+              ⚠ Trades execute on your own broker account. You maintain full control. This is not investment advice.
+            </div>
+            <div style={{ marginTop:16, background:`linear-gradient(90deg,${C.orange},#ff9500)`, color:"#fff", padding:"12px", borderRadius:6, textAlign:"center", fontFamily:"'IBM Plex Mono',monospace", fontSize:13, fontWeight:700 }}>
+              SELECT BOT TIER →
+            </div>
+          </div>
         </div>
 
         <div style={{ textAlign:"center", marginTop:24, fontSize:11, color:C.dim }}>
@@ -143,6 +175,9 @@ function SignupPage({ plan, onNext, onBack }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const isPro = plan === "pro";
+  const isBot = plan === "bot";
+  const planColor = isBot ? C.orange : isPro ? C.purple : C.accent;
+  const planLabel = isBot ? "⚡ Bot — $299/mo" : isPro ? "✦ Pro — $149/mo" : "Starter — $49/mo";
 
   const set = k => v => setForm(f=>({...f,[k]:v}));
 
@@ -161,16 +196,18 @@ function SignupPage({ plan, onNext, onBack }) {
     <div style={{ background:C.bg, minHeight:"100vh", color:C.text }}>
       <style>{FONTS}</style>
       <Nav onBack={onBack} backLabel="← Change Plan" right={
-        <span style={{ fontSize:11, padding:"4px 12px", borderRadius:12, background:isPro?"#1a0a3a":"#001a2a", border:`1px solid ${isPro?C.purple:C.accent}44`, color:isPro?C.purple:C.accent }}>
-          {isPro?"✦ Pro — $149/mo":"Starter — $49/mo"}
+        <span style={{ fontSize:11, padding:"4px 12px", borderRadius:12, background:isBot?"#120800":isPro?"#1a0a3a":"#001a2a", border:`1px solid ${planColor}44`, color:planColor }}>
+          {planLabel}
         </span>
       } />
       <div style={{ maxWidth:520, margin:"0 auto", padding:"50px 24px" }}>
         <StepBar steps={["Plan","Account","Payment","Access"]} current={1} />
         <div style={{ background:C.panel, border:`1px solid ${C.border}`, borderRadius:12, padding:"36px 32px" }}>
           <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:"#fff", marginBottom:6 }}>Create Your Account</h2>
-          <p style={{ color:C.dim, fontSize:13, marginBottom:28 }}>You're signing up for the <strong style={{ color:isPro?C.purple:C.accent }}>{isPro?"Pro":"Starter"}</strong> plan.</p>
-
+          <p style={{ color:C.dim, fontSize:13, marginBottom:28 }}>
+            You're signing up for the <strong style={{ color:planColor }}>{isBot?"Bot Tier":isPro?"Pro":"Starter"}</strong> plan.
+            {isBot && <span style={{ display:"block", marginTop:6, color:C.orange, fontSize:12 }}>You'll connect your broker after signup.</span>}
+          </p>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
             <Input label="First Name" value={form.firstName} onChange={set("firstName")} placeholder="John" required />
             <Input label="Last Name"  value={form.lastName}  onChange={set("lastName")}  placeholder="Doe"  required />
@@ -179,13 +216,10 @@ function SignupPage({ plan, onNext, onBack }) {
           <Input label="Phone Number"  type="tel"   value={form.phone} onChange={set("phone")} placeholder="+1 (555) 000-0000" required />
           <Input label="Password"      type="password" value={form.password} onChange={set("password")} placeholder="Min. 8 characters" required />
           <Input label="Confirm Password" type="password" value={form.confirm} onChange={set("confirm")} placeholder="Re-enter password" required />
-
           {error && <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>⚠ {error}</div>}
-
-          <Button onClick={handleSubmit} disabled={loading} fullWidth variant={isPro?"purple":"primary"}>
+          <Button onClick={handleSubmit} disabled={loading} fullWidth variant={isBot?"primary":isPro?"purple":"primary"} style={isBot?{background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff"}:{}}>
             {loading ? "CREATING ACCOUNT…" : "CONTINUE TO PAYMENT →"}
           </Button>
-
           <p style={{ fontSize:11, color:C.dim, textAlign:"center", marginTop:16, lineHeight:1.7 }}>
             By continuing you agree to our <span style={{ color:C.accent, cursor:"pointer" }}>Terms of Service</span> and <span style={{ color:C.accent, cursor:"pointer" }}>Privacy Policy</span>.
           </p>
@@ -198,7 +232,10 @@ function SignupPage({ plan, onNext, onBack }) {
 // ─── Payment Page ─────────────────────────────────────────────────────────────
 function PaymentPage({ plan, user, onSuccess, onBack }) {
   const isPro = plan === "pro";
-  const amount = isPro ? 149 : 49;
+  const isBot = plan === "bot";
+  const amount = isBot ? 299 : isPro ? 149 : 49;
+  const planColor = isBot ? C.orange : isPro ? C.purple : C.accent;
+  const planLabel = isBot ? "⚡ Bot Tier" : isPro ? "✦ Pro" : "Starter";
   const [loading, setLoading] = useState(false);
   const [cardName, setCardName] = useState(`${user.firstName} ${user.lastName}`);
   const stripeRef = useRef(null);
@@ -248,27 +285,23 @@ function PaymentPage({ plan, user, onSuccess, onBack }) {
     <div style={{ background:C.bg, minHeight:"100vh", color:C.text }}>
       <style>{`${FONTS} #stripe-card-element { padding: 12px 14px; background: #040c14; border: 1px solid ${C.border}; border-radius: 6px; transition: border-color 0.2s; } #stripe-card-element.StripeElement--focus { border-color: ${C.accent}; }`}</style>
       <Nav onBack={onBack} backLabel="← Back" right={
-        <span style={{ fontSize:11, padding:"4px 12px", borderRadius:12, background:isPro?"#1a0a3a":"#001a2a", border:`1px solid ${isPro?C.purple:C.accent}44`, color:isPro?C.purple:C.accent }}>
-          {isPro?"✦ Pro — $149/mo":"Starter — $49/mo"}
+        <span style={{ fontSize:11, padding:"4px 12px", borderRadius:12, background:isBot?"#120800":isPro?"#1a0a3a":"#001a2a", border:`1px solid ${planColor}44`, color:planColor }}>
+          {isBot?"⚡ Bot — $299/mo":isPro?"✦ Pro — $149/mo":"Starter — $49/mo"}
         </span>
       } />
       <div style={{ maxWidth:520, margin:"0 auto", padding:"50px 24px" }}>
         <StepBar steps={["Plan","Account","Payment","Access"]} current={2} />
-
-        {/* Order Summary */}
-        <div style={{ background:C.panel, border:`1px solid ${isPro?C.purple+"55":C.border}`, borderRadius:12, padding:"20px 24px", marginBottom:20 }}>
+        <div style={{ background:C.panel, border:`1px solid ${planColor}55`, borderRadius:12, padding:"20px 24px", marginBottom:20 }}>
           <div style={{ fontSize:10, color:C.dim, letterSpacing:2, textTransform:"uppercase", marginBottom:14 }}>Order Summary</div>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-            <span style={{ fontSize:14, color:C.text }}>Quantum Signal AI — <strong style={{ color:isPro?C.purple:C.accent }}>{isPro?"Pro":"Starter"}</strong></span>
+            <span style={{ fontSize:14, color:C.text }}>Quantum Signal AI — <strong style={{ color:planColor }}>{planLabel}</strong></span>
             <span style={{ fontSize:18, fontFamily:"'IBM Plex Mono',monospace", color:"#fff", fontWeight:700 }}>${amount}/mo</span>
           </div>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.dim, borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
             <span>Billed monthly · Cancel anytime</span>
             <span style={{ color:C.green }}>✓ Secured by Stripe</span>
           </div>
-          <div style={{ marginTop:10, fontSize:11, color:C.dim }}>
-            Account: <span style={{ color:C.text }}>{user.email}</span>
-          </div>
+          <div style={{ marginTop:10, fontSize:11, color:C.dim }}>Account: <span style={{ color:C.text }}>{user.email}</span></div>
         </div>
 
         {/* Payment Form */}
@@ -290,7 +323,7 @@ function PaymentPage({ plan, user, onSuccess, onBack }) {
             ))}
           </div>
 
-          <Button onClick={handlePay} disabled={loading} fullWidth variant={isPro?"purple":"primary"}>
+          <Button onClick={handlePay} disabled={loading} fullWidth variant={isBot?"primary":isPro?"purple":"primary"} style={isBot?{background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff"}:{}}>
             {loading ? "PROCESSING PAYMENT…" : `SUBSCRIBE FOR $${amount}/MONTH →`}
           </Button>
 
@@ -306,6 +339,8 @@ function PaymentPage({ plan, user, onSuccess, onBack }) {
 // ─── Success Page ─────────────────────────────────────────────────────────────
 function SuccessPage({ plan, user, onEnter }) {
   const isPro = plan === "pro";
+  const isBot = plan === "bot";
+  const planColor = isBot ? C.orange : isPro ? C.purple : C.accent;
   const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
@@ -318,22 +353,29 @@ function SuccessPage({ plan, user, onEnter }) {
       <style>{FONTS}</style>
       <Nav />
       <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
-        <div style={{ textAlign:"center", maxWidth:480 }}>
+        <div style={{ textAlign:"center", maxWidth:500 }}>
           <StepBar steps={["Plan","Account","Payment","Access"]} current={3} />
-          <div style={{ fontSize:64, marginBottom:20 }}>🎉</div>
+          <div style={{ fontSize:64, marginBottom:20 }}>{isBot?"🤖":"🎉"}</div>
           <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:32, fontWeight:800, color:"#fff", marginBottom:12 }}>You're In!</h1>
           <p style={{ color:C.dim, fontSize:14, marginBottom:6 }}>
-            Welcome, <strong style={{ color:C.text }}>{user.firstName}</strong>! Your <strong style={{ color:isPro?C.purple:C.accent }}>{isPro?"Pro":"Starter"}</strong> subscription is active.
+            Welcome, <strong style={{ color:C.text }}>{user.firstName}</strong>! Your <strong style={{ color:planColor }}>{isBot?"Bot Tier":isPro?"Pro":"Starter"}</strong> subscription is active.
           </p>
           <p style={{ color:C.dim, fontSize:13, marginBottom:28 }}>A confirmation has been sent to <strong style={{ color:C.text }}>{user.email}</strong></p>
 
-          <div style={{ background:C.panel, border:`1px solid ${isPro?C.purple+"55":C.accent+"33"}`, borderRadius:12, padding:"24px", marginBottom:28, textAlign:"left" }}>
-            <div style={{ fontSize:10, color:C.dim, letterSpacing:2, marginBottom:14 }}>WHAT'S INCLUDED IN YOUR PLAN</div>
-            {(isPro ? [
+          <div style={{ background:C.panel, border:`1px solid ${planColor}44`, borderRadius:12, padding:"24px", marginBottom:28, textAlign:"left" }}>
+            <div style={{ fontSize:10, color:C.dim, letterSpacing:2, marginBottom:14 }}>WHAT'S INCLUDED</div>
+            {(isBot ? [
+              "⚡ Automated trading on your broker account",
+              "⚡ Connect Alpaca (stocks + crypto)",
+              "⚡ Connect Coinbase Advanced (crypto)",
+              "⚡ Full Pro dashboard included",
+              "⚡ Emergency stop button",
+              "⚡ Full trade log & performance stats",
+            ] : isPro ? [
               "✦ Real-time signals as they fire",
               "✦ AI Confidence Score per signal",
               "✦ Stocks, options, crypto & forex",
-              "✦ Advanced risk management guidance",
+              "✦ Advanced risk management",
               "✦ $10,000 paper trading wallet",
             ] : [
               "✓ 5–10 curated signals per week",
@@ -345,10 +387,306 @@ function SuccessPage({ plan, user, onEnter }) {
             ))}
           </div>
 
-          <Button onClick={onEnter} fullWidth variant={isPro?"purple":"primary"}>
-            ENTER DASHBOARD →
+          {isBot && (
+            <div style={{ background:"#120800", border:`1px solid ${C.orange}44`, borderRadius:8, padding:"14px", marginBottom:20, fontSize:12, color:C.orange, lineHeight:1.7 }}>
+              🔑 Next step: Connect your broker account to activate the auto-trader.
+            </div>
+          )}
+
+          <Button onClick={onEnter} fullWidth variant="primary" style={isBot?{background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff"}:isPro?{background:C.purple,color:"#fff"}:{}}>
+            {isBot ? "CONNECT BROKER & ENTER →" : "ENTER DASHBOARD →"}
           </Button>
           <p style={{ fontSize:11, color:C.dim, marginTop:12 }}>Auto-entering in {countdown}s…</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bot Setup Page (Broker Connection) ──────────────────────────────────────
+function BotSetupPage({ user, onComplete, onSkip }) {
+  const [broker, setBroker] = useState("alpaca");
+  const [alpacaKey, setAlpacaKey] = useState("");
+  const [alpacaSecret, setAlpacaSecret] = useState("");
+  const [coinbaseKey, setCoinbaseKey] = useState("");
+  const [coinbaseSecret, setCoinbaseSecret] = useState("");
+  const [connected, setConnected] = useState({ alpaca: false, coinbase: false });
+  const [loading, setLoading] = useState(null);
+  const [error, setError] = useState("");
+
+  const connectAlpaca = () => {
+    if (!alpacaKey || !alpacaSecret) { setError("Enter both Alpaca API Key and Secret."); return; }
+    setError(""); setLoading("alpaca");
+    // Store keys locally (in production, send to secure backend)
+    localStorage.setItem("qs_alpaca", JSON.stringify({ key: alpacaKey, secret: alpacaSecret }));
+    setTimeout(() => { setConnected(c=>({...c,alpaca:true})); setLoading(null); }, 1000);
+  };
+
+  const connectCoinbase = () => {
+    if (!coinbaseKey || !coinbaseSecret) { setError("Enter both Coinbase API Key and Secret."); return; }
+    setError(""); setLoading("coinbase");
+    localStorage.setItem("qs_coinbase", JSON.stringify({ key: coinbaseKey, secret: coinbaseSecret }));
+    setTimeout(() => { setConnected(c=>({...c,coinbase:true})); setLoading(null); }, 1000);
+  };
+
+  const anyConnected = connected.alpaca || connected.coinbase;
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"'IBM Plex Mono',monospace" }}>
+      <style>{FONTS}</style>
+      <Nav right={<button onClick={onSkip} style={{ background:"transparent", border:`1px solid ${C.border}`, color:C.dim, padding:"6px 14px", borderRadius:4, cursor:"pointer", fontSize:11, fontFamily:"inherit" }}>Skip for now →</button>} />
+      <div style={{ maxWidth:580, margin:"0 auto", padding:"40px 24px" }}>
+        <div style={{ textAlign:"center", marginBottom:36 }}>
+          <div style={{ fontSize:40, marginBottom:12 }}>🔗</div>
+          <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:28, fontWeight:800, color:"#fff", marginBottom:8 }}>Connect Your Broker</h2>
+          <p style={{ color:C.dim, fontSize:13, lineHeight:1.7 }}>The bot will trade on <strong style={{ color:C.text }}>your own broker account</strong> using your API keys. Your funds never touch our servers.</p>
+        </div>
+
+        {/* Broker tabs */}
+        <div style={{ display:"flex", gap:8, marginBottom:24 }}>
+          {[["alpaca","📈 Alpaca"],["coinbase","🪙 Coinbase"]].map(([b,l])=>(
+            <button key={b} onClick={()=>setBroker(b)} style={{ flex:1, padding:"10px", borderRadius:8, border:`1px solid ${broker===b?C.orange:C.border}`, background:broker===b?"#120800":C.panel, color:broker===b?C.orange:C.dim, cursor:"pointer", fontSize:12, fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+              {l} {connected[b] && <span style={{ color:C.green }}>✓</span>}
+            </button>
+          ))}
+        </div>
+
+        {broker === "alpaca" && (
+          <div style={{ background:C.panel, border:`1px solid ${connected.alpaca?C.green:C.border}`, borderRadius:12, padding:"28px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:700, color:"#fff" }}>📈 Alpaca Markets</h3>
+              {connected.alpaca && <span style={{ color:C.green, fontSize:11, border:`1px solid ${C.green}`, padding:"3px 10px", borderRadius:4 }}>● CONNECTED</span>}
+            </div>
+            <div style={{ background:"#001a0a", border:`1px solid ${C.green}22`, borderRadius:8, padding:"12px 14px", marginBottom:20, fontSize:11, color:C.dim, lineHeight:1.8 }}>
+              <strong style={{ color:C.green }}>How to get your keys:</strong><br/>
+              1. Go to <span style={{ color:C.accent }}>alpaca.markets</span> → sign up free<br/>
+              2. Click <strong style={{ color:C.text }}>Paper Trading</strong> to start risk-free<br/>
+              3. Go to <strong style={{ color:C.text }}>API Keys</strong> → Generate New Key<br/>
+              4. Copy Key ID + Secret Key below
+            </div>
+            <Input label="Alpaca API Key ID" value={alpacaKey} onChange={setAlpacaKey} placeholder="PK_XXXXXXXXXXXXXXXXXX" />
+            <Input label="Alpaca Secret Key" type="password" value={alpacaSecret} onChange={setAlpacaSecret} placeholder="xxxxxxxxxxxxxxxxxxxx" />
+            <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+              <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"10px 14px", fontSize:11 }}>
+                <div style={{ color:C.dim, marginBottom:2 }}>Supported Markets</div>
+                <div style={{ color:C.text }}>US Stocks · Crypto · ETFs</div>
+              </div>
+              <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"10px 14px", fontSize:11 }}>
+                <div style={{ color:C.dim, marginBottom:2 }}>Paper Trading</div>
+                <div style={{ color:C.green }}>✓ Available (Risk-free)</div>
+              </div>
+            </div>
+            {error && broker==="alpaca" && <div style={{ color:C.red, fontSize:11, marginBottom:12 }}>⚠ {error}</div>}
+            <Button onClick={connectAlpaca} disabled={loading==="alpaca"||connected.alpaca} fullWidth variant="primary" style={{ background:connected.alpaca?C.green:`linear-gradient(90deg,${C.orange},#ff9500)`, color: C.bg }}>
+              {loading==="alpaca" ? "CONNECTING…" : connected.alpaca ? "✓ CONNECTED" : "CONNECT ALPACA →"}
+            </Button>
+          </div>
+        )}
+
+        {broker === "coinbase" && (
+          <div style={{ background:C.panel, border:`1px solid ${connected.coinbase?C.green:C.border}`, borderRadius:12, padding:"28px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:700, color:"#fff" }}>🪙 Coinbase Advanced</h3>
+              {connected.coinbase && <span style={{ color:C.green, fontSize:11, border:`1px solid ${C.green}`, padding:"3px 10px", borderRadius:4 }}>● CONNECTED</span>}
+            </div>
+            <div style={{ background:"#001a0a", border:`1px solid ${C.green}22`, borderRadius:8, padding:"12px 14px", marginBottom:20, fontSize:11, color:C.dim, lineHeight:1.8 }}>
+              <strong style={{ color:C.green }}>How to get your keys:</strong><br/>
+              1. Go to <span style={{ color:C.accent }}>coinbase.com/advanced-trade</span><br/>
+              2. Click profile → <strong style={{ color:C.text }}>API</strong> → New API Key<br/>
+              3. Enable <strong style={{ color:C.text }}>Trade</strong> permission<br/>
+              4. Copy API Key + Secret below
+            </div>
+            <Input label="Coinbase API Key" value={coinbaseKey} onChange={setCoinbaseKey} placeholder="organizations/xxx/apiKeys/xxx" />
+            <Input label="Coinbase API Secret" type="password" value={coinbaseSecret} onChange={setCoinbaseSecret} placeholder="-----BEGIN EC PRIVATE KEY-----" />
+            <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+              <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"10px 14px", fontSize:11 }}>
+                <div style={{ color:C.dim, marginBottom:2 }}>Supported Markets</div>
+                <div style={{ color:C.text }}>BTC · ETH · SOL · 200+ Crypto</div>
+              </div>
+              <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"10px 14px", fontSize:11 }}>
+                <div style={{ color:C.dim, marginBottom:2 }}>Real Trading</div>
+                <div style={{ color:C.yellow }}>⚠ Uses real funds</div>
+              </div>
+            </div>
+            {error && broker==="coinbase" && <div style={{ color:C.red, fontSize:11, marginBottom:12 }}>⚠ {error}</div>}
+            <Button onClick={connectCoinbase} disabled={loading==="coinbase"||connected.coinbase} fullWidth variant="primary" style={{ background:connected.coinbase?C.green:`linear-gradient(90deg,${C.orange},#ff9500)`, color: C.bg }}>
+              {loading==="coinbase" ? "CONNECTING…" : connected.coinbase ? "✓ CONNECTED" : "CONNECT COINBASE →"}
+            </Button>
+          </div>
+        )}
+
+        <div style={{ marginTop:24 }}>
+          <Button onClick={onComplete} fullWidth variant="primary" disabled={!anyConnected} style={{ background:anyConnected?`linear-gradient(90deg,${C.orange},#ff9500)`:"", color: anyConnected?C.bg:C.dim }}>
+            {anyConnected ? "ENTER BOT DASHBOARD →" : "Connect at least one broker to continue"}
+          </Button>
+          <p style={{ textAlign:"center", fontSize:11, color:C.dim, marginTop:12, lineHeight:1.7 }}>
+            Your API keys are stored locally in your browser. We never store or transmit them to our servers. You maintain full control of your funds at all times.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bot Dashboard ────────────────────────────────────────────────────────────
+function BotDashboard({ user, onLogout }) {
+  const [botActive, setBotActive] = useState(false);
+  const [riskPct, setRiskPct] = useState(2);
+  const [maxTrades, setMaxTrades] = useState(3);
+  const [tradeLog, setTradeLog] = useState([
+    { time:"09:41:23", pair:"BTC/USD", type:"BUY",  qty:0.012, price:67420, sig:"STRONG BUY",  status:"executed", pnl:null },
+    { time:"11:22:08", pair:"ETH/USD", type:"BUY",  qty:0.18,  price:3480,  sig:"BUY",         status:"executed", pnl:null },
+    { time:"13:05:44", pair:"BTC/USD", type:"SELL", qty:0.012, price:68100, sig:"SELL",         status:"executed", pnl:"+$8.16" },
+    { time:"14:33:12", pair:"SOL/USD", type:"BUY",  qty:2.5,   price:174.2, sig:"HIGHLY ADVISED BUY", status:"pending",  pnl:null },
+  ]);
+  const [botStats] = useState({ totalTrades:47, winRate:68, totalPnl:"+$1,247.38", todayPnl:"+$84.22", activeSince:"Jun 1, 2026" });
+  const [brokers] = useState({
+    alpaca:   !!localStorage.getItem("qs_alpaca"),
+    coinbase: !!localStorage.getItem("qs_coinbase"),
+  });
+
+  const emergencyStop = () => {
+    setBotActive(false);
+    setTradeLog(l => l.map(t => t.status==="pending" ? {...t, status:"cancelled"} : t));
+    alert("⛔ Emergency stop activated. All pending orders cancelled. Bot disabled.");
+  };
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"'IBM Plex Mono',monospace" }}>
+      <style>{`${FONTS} @keyframes botPulse{0%,100%{box-shadow:0 0 10px ${C.orange}44}50%{box-shadow:0 0 30px ${C.orange}99}}`}</style>
+
+      <nav style={{ borderBottom:`1px solid ${C.border}`, background:"rgba(3,6,8,0.98)", padding:"12px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, position:"sticky", top:0, zIndex:100 }}>
+        <Logo />
+        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontSize:11, padding:"3px 10px", borderRadius:12, background:"#120800", border:`1px solid ${C.orange}44`, color:C.orange }}>⚡ BOT TIER</span>
+          {user && <span style={{ fontSize:11, color:C.dim }}>👤 {user.firstName} {user.lastName}</span>}
+          <span style={{ fontSize:10, color:botActive?C.green:C.dim }}>{botActive?"🤖 BOT ACTIVE":"⏸ BOT PAUSED"}</span>
+          <button onClick={onLogout} style={{ background:"transparent", border:`1px solid ${C.border}`, color:C.dim, padding:"4px 10px", borderRadius:4, cursor:"pointer", fontSize:10, fontFamily:"inherit" }}>← LOGOUT</button>
+        </div>
+      </nav>
+
+      <div style={{ padding:"20px 24px" }}>
+
+        {/* Bot Control Panel */}
+        <div style={{ background:"linear-gradient(135deg,#120800,#080400)", border:`2px solid ${botActive?C.orange:C.border}`, borderRadius:14, padding:"24px", marginBottom:16, animation:botActive?"botPulse 2s infinite":"none" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
+            <div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:20, fontWeight:800, color:"#fff", marginBottom:4 }}>
+                {botActive ? "🤖 Auto-Trader is RUNNING" : "⏸ Auto-Trader is PAUSED"}
+              </div>
+              <div style={{ fontSize:12, color:C.dim }}>
+                Bot {botActive?"is actively monitoring signals and executing trades":"is paused — no trades will execute"}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>setBotActive(a=>!a)} style={{ background:botActive?"#1a0800":`linear-gradient(90deg,${C.orange},#ff9500)`, border:`1px solid ${C.orange}`, color:botActive?C.orange:"#fff", padding:"10px 24px", borderRadius:8, cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:700, letterSpacing:1 }}>
+                {botActive ? "⏸ PAUSE BOT" : "▶ START BOT"}
+              </button>
+              <button onClick={emergencyStop} style={{ background:"#1a0005", border:`1px solid ${C.red}`, color:C.red, padding:"10px 20px", borderRadius:8, cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:700 }}>
+                ⛔ STOP
+              </button>
+            </div>
+          </div>
+
+          {/* Broker status */}
+          <div style={{ display:"flex", gap:10, marginTop:16, flexWrap:"wrap" }}>
+            {[
+              { label:"Alpaca", icon:"📈", connected:brokers.alpaca },
+              { label:"Coinbase", icon:"🪙", connected:brokers.coinbase },
+            ].map(b=>(
+              <div key={b.label} style={{ background:C.bg, border:`1px solid ${b.connected?C.green:C.border}`, borderRadius:6, padding:"8px 14px", display:"flex", alignItems:"center", gap:8, fontSize:11 }}>
+                <span>{b.icon}</span>
+                <span style={{ color:C.text }}>{b.label}</span>
+                <span style={{ color:b.connected?C.green:C.dim }}>{b.connected?"● Connected":"○ Not connected"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" }}>
+          {[
+            ["Total Trades", botStats.totalTrades, C.accent],
+            ["Win Rate",     `${botStats.winRate}%`, C.green],
+            ["Total P&L",   botStats.totalPnl, C.green],
+            ["Today P&L",   botStats.todayPnl, C.green],
+            ["Active Since",botStats.activeSince, C.dim],
+          ].map(([l,v,c])=>(
+            <div key={l} style={{ background:"linear-gradient(135deg,#0a1520,#060d14)", border:`1px solid ${C.border}`, borderRadius:10, padding:"14px 16px", flex:1, minWidth:120 }}>
+              <div style={{ fontSize:9, color:C.dim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>{l}</div>
+              <div style={{ fontSize:17, fontFamily:"'IBM Plex Mono',monospace", color:c, fontWeight:700 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Risk Settings */}
+        <div style={{ background:"linear-gradient(135deg,#0a1520,#060d14)", border:`1px solid ${C.border}`, borderRadius:12, marginBottom:16, overflow:"hidden" }}>
+          <div style={{ padding:"11px 16px", borderBottom:`1px solid ${C.border}`, fontSize:10, color:C.dim, letterSpacing:2, textTransform:"uppercase" }}>
+            🛡 Risk Management Settings
+          </div>
+          <div style={{ padding:16, display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:16 }}>
+            <div>
+              <label style={{ fontSize:11, color:C.dim, letterSpacing:1, display:"block", marginBottom:8 }}>RISK PER TRADE: <span style={{ color:C.orange }}>{riskPct}%</span></label>
+              <input type="range" min={0.5} max={10} step={0.5} value={riskPct} onChange={e=>setRiskPct(+e.target.value)}
+                style={{ width:"100%", accentColor:C.orange }} />
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:C.dim, marginTop:4 }}>
+                <span>0.5% (Conservative)</span><span>10% (Aggressive)</span>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize:11, color:C.dim, letterSpacing:1, display:"block", marginBottom:8 }}>MAX OPEN TRADES: <span style={{ color:C.orange }}>{maxTrades}</span></label>
+              <input type="range" min={1} max={10} step={1} value={maxTrades} onChange={e=>setMaxTrades(+e.target.value)}
+                style={{ width:"100%", accentColor:C.orange }} />
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:C.dim, marginTop:4 }}>
+                <span>1 trade</span><span>10 trades</span>
+              </div>
+            </div>
+            <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"12px 14px" }}>
+              <div style={{ fontSize:10, color:C.dim, marginBottom:6 }}>SIGNAL THRESHOLD</div>
+              <div style={{ fontSize:12, color:C.text, marginBottom:4 }}>Only trade on:</div>
+              {["STRONG BUY / HIGHLY ADVISED","All BUY signals"].map((opt,i)=>(
+                <label key={opt} style={{ display:"flex", alignItems:"center", gap:8, fontSize:11, color:C.text, marginBottom:4, cursor:"pointer" }}>
+                  <input type="radio" name="threshold" defaultChecked={i===0} style={{ accentColor:C.orange }} />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Trade Log */}
+        <div style={{ background:"linear-gradient(135deg,#0a1520,#060d14)", border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden" }}>
+          <div style={{ padding:"11px 16px", borderBottom:`1px solid ${C.border}`, fontSize:10, color:C.dim, letterSpacing:2, textTransform:"uppercase" }}>
+            📋 Live Trade Log
+          </div>
+          <div style={{ padding:16 }}>
+            {tradeLog.map((t,i)=>{
+              const tc = t.type==="BUY"?C.green:C.red;
+              const sc = t.status==="executed"?C.green:t.status==="pending"?C.yellow:C.dim;
+              return(
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<tradeLog.length-1?`1px solid ${C.border}`:"none", flexWrap:"wrap", gap:8 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ fontSize:10, color:tc, border:`1px solid ${tc}44`, padding:"2px 8px", borderRadius:3, fontWeight:700 }}>{t.type}</span>
+                    <div>
+                      <div style={{ fontSize:12, color:C.text, fontWeight:600 }}>{t.pair}</div>
+                      <div style={{ fontSize:10, color:C.dim }}>{t.time} · {t.sig}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontSize:12, color:C.text }}>{t.qty} @ ${fmt(t.price)}</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <span style={{ fontSize:10, color:sc }}>{t.status.toUpperCase()}</span>
+                      {t.pnl && <span style={{ fontSize:11, color:C.green, fontWeight:700 }}>{t.pnl}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ fontSize:9, color:C.dim, textAlign:"center", marginTop:12, lineHeight:1.9 }}>
+          ⚠ The bot executes trades on your own broker account. You are solely responsible for all trading activity. This is not financial advice. Past performance does not guarantee future results.
         </div>
       </div>
     </div>
@@ -1016,8 +1354,8 @@ function LandingPage({ onGetStarted, onAdminLogin }) {
 
 // ─── Admin Credentials (bypass payment) ──────────────────────────────────────
 const ADMIN_USERS = [
-  { username:"quantumowner", password:"QSA!Owner2025", firstName:"Owner",   lastName:"Admin",   plan:"pro" },
-  { username:"quantumpartner", password:"QSA!Partner2025", firstName:"Partner", lastName:"Access",  plan:"pro" },
+  { username:"quantumowner",   password:"QSA!Owner2025",   firstName:"Owner",   lastName:"Admin",  plan:"bot" },
+  { username:"quantumpartner", password:"QSA!Partner2025", firstName:"Partner", lastName:"Access", plan:"bot" },
 ];
 
 // ─── Admin Login Page ─────────────────────────────────────────────────────────
@@ -1167,8 +1505,9 @@ export default function App() {
     localStorage.setItem("qs_user", JSON.stringify(u));
     localStorage.setItem("qs_plan", p);
     setUser(u); setPlan(p);
-    window.history.replaceState({ page:"dashboard" }, "", "#dashboard");
-    setPage("dashboard");
+    const dest = p === "bot" ? "botdashboard" : "dashboard";
+    window.history.replaceState({ page:dest }, "", `#${dest}`);
+    setPage(dest);
   };
 
   if (page === "landing")   return <LandingPage onGetStarted={()=>navigate("plan")} onAdminLogin={()=>navigate("admin")} />;
@@ -1176,10 +1515,13 @@ export default function App() {
   if (page === "plan")      return <PlanPage onSelect={p=>{setPlan(p);navigate("signup");}} onBack={()=>navigate("landing")} />;
   if (page === "signup")    return <SignupPage plan={plan} onNext={u=>{setUser(u);navigate("payment");}} onBack={()=>navigate("plan")} />;
   if (page === "payment")   return <PaymentPage plan={plan} user={user} onSuccess={handlePaySuccess} onBack={()=>navigate("signup")} />;
-  if (page === "success")   return <SuccessPage plan={plan} user={user} onEnter={()=>navigate("dashboard")} />;
+  if (page === "success")   return <SuccessPage plan={plan} user={user} onEnter={()=>navigate(plan==="bot"?"botsetup":"dashboard")} />;
+  if (page === "botsetup")  return <BotSetupPage user={user} onComplete={()=>navigate("botdashboard")} onSkip={()=>navigate("botdashboard")} />;
+  if (page === "botdashboard") return <BotDashboard user={user} onLogout={handleLogout} />;
   if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
+
 
 
 
