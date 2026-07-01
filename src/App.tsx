@@ -1639,68 +1639,6 @@ function AdminLogin({ onLogin, onBack }) {
     </div>
   );
 }
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", password:"", confirm:"" });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const set = k => v => setForm(f=>({...f,[k]:v}));
-
-  const handleSubmit = () => {
-    setError("");
-    if (!form.firstName || !form.lastName || !form.email || !form.password) { setError("All fields are required."); return; }
-    if (!form.email.includes("@")) { setError("Please enter a valid email."); return; }
-    if (form.password.length < 8) { setError("Password must be at least 8 characters."); return; }
-    if (form.password !== form.confirm) { setError("Passwords do not match."); return; }
-    setLoading(true);
-
-    // Save promo account locally
-    const account = { firstName:form.firstName, lastName:form.lastName, email:form.email, password:form.password, promoCode, createdAt: new Date().toISOString() };
-    localStorage.setItem(`qs_promo_${promoCode}`, JSON.stringify(account));
-    setTimeout(() => { setLoading(false); onComplete({ firstName:form.firstName, lastName:form.lastName, email:form.email, phone:"" }); }, 800);
-  };
-
-  return (
-    <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"'IBM Plex Mono',monospace", display:"flex", flexDirection:"column" }}>
-      <style>{FONTS}</style>
-      <Nav onBack={onBack} backLabel="← Back" />
-      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
-        <div style={{ width:"100%", maxWidth:460 }}>
-          <div style={{ textAlign:"center", marginBottom:28 }}>
-            <div style={{ fontSize:36, marginBottom:10 }}>🎁</div>
-            <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:"#fff", marginBottom:8 }}>Set Up Your Free Account</h2>
-            <p style={{ color:C.dim, fontSize:13, lineHeight:1.7 }}>
-              Your promo code <strong style={{ color:C.orange }}>{promoCode}</strong> gives you <strong style={{ color:C.text }}>full Bot Tier access — free forever</strong>. Create your personal login below.
-            </p>
-          </div>
-
-          <div style={{ background:C.panel, border:`1px solid ${C.orange}44`, borderRadius:12, padding:"32px 28px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, background:"#120800", border:`1px solid ${C.orange}33`, borderRadius:6, padding:"10px 14px", marginBottom:24 }}>
-              <span style={{ fontSize:14 }}>⚡</span>
-              <span style={{ fontSize:11, color:C.orange }}>Bot Tier · All markets · Auto-trading · Free access</span>
-            </div>
-
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-              <Input label="First Name" value={form.firstName} onChange={set("firstName")} placeholder="Jane" required />
-              <Input label="Last Name"  value={form.lastName}  onChange={set("lastName")}  placeholder="Smith" required />
-            </div>
-            <Input label="Your Email"    type="email"    value={form.email}    onChange={set("email")}    placeholder="jane@yourbrand.com" required />
-            <Input label="Set Password"  type="password" value={form.password} onChange={set("password")} placeholder="Min. 8 characters" required />
-            <Input label="Confirm Password" type="password" value={form.confirm} onChange={set("confirm")} placeholder="Re-enter password" required />
-
-            {error && <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>⚠ {error}</div>}
-
-            <button onClick={handleSubmit} disabled={loading} style={{ width:"100%", background:`linear-gradient(90deg,${C.orange},#ff9500)`, color:"#fff", border:"none", padding:"14px", borderRadius:6, cursor:"pointer", fontFamily:"'IBM Plex Mono',monospace", fontSize:13, fontWeight:700, letterSpacing:1, opacity:loading?0.7:1 }}>
-              {loading ? "CREATING ACCOUNT…" : "CREATE MY ACCOUNT →"}
-            </button>
-
-            <p style={{ fontSize:11, color:C.dim, textAlign:"center", marginTop:14, lineHeight:1.7 }}>
-              Your account is tied to promo code <strong style={{ color:C.orange }}>{promoCode}</strong>. By continuing you agree to our Terms of Service.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── App Root ─────────────────────────────────────────────────────────────────
 export default function App() {
@@ -1771,6 +1709,7 @@ export default function App() {
   if (page === "dashboard")    return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
+
 
 
 
