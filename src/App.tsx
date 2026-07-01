@@ -1287,7 +1287,7 @@ function Dashboard({ plan, user, onLogout }) {
 }
 
 // ─── Landing Page ─────────────────────────────────────────────────────────────
-function LandingPage({ onGetStarted, onAdminLogin }) {
+function LandingPage({ onGetStarted, onAdminLogin, onPartnerLogin }) {
   return (
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'IBM Plex Mono',monospace",color:C.text}}>
       <style>{`${FONTS} *{box-sizing:border-box;margin:0;padding:0;} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} @keyframes floatUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}} @keyframes glowPurple{0%,100%{box-shadow:0 0 20px #a855f722}50%{box-shadow:0 0 50px #a855f755}}`}</style>
@@ -1296,6 +1296,7 @@ function LandingPage({ onGetStarted, onAdminLogin }) {
         <Logo />
         <div style={{display:"flex",gap:16,alignItems:"center",fontSize:12,color:C.dim}}>
           <button onClick={onAdminLogin} style={{background:"transparent",color:C.dim,border:"none",cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:1}}>🔐 Admin</button>
+          <button onClick={onPartnerLogin} style={{background:"transparent",color:C.orange,border:`1px solid ${C.orange}44`,padding:"6px 14px",borderRadius:4,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:1}}>🤝 Partners</button>
           <button onClick={onGetStarted} style={{background:C.purple,color:"#fff",border:"none",padding:"8px 18px",borderRadius:4,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,letterSpacing:1}}>GET STARTED</button>
         </div>
       </nav>
@@ -1412,11 +1413,166 @@ function LandingPage({ onGetStarted, onAdminLogin }) {
   );
 }
 
-// ─── Admin Credentials (bypass payment) ──────────────────────────────────────
+// ─── Admin Credentials ────────────────────────────────────────────────────────
 const ADMIN_USERS = [
-  { username:"quantumowner",   password:"QSA!Owner2025",   firstName:"Owner",   lastName:"Admin",  plan:"bot" },
-  { username:"quantumpartner", password:"QSA!Partner2025", firstName:"Partner", lastName:"Access", plan:"bot" },
+  { username:"quantumowner",   password:"QSA!Owner2025",   firstName:"Owner",   lastName:"Admin",  plan:"bot", type:"admin" },
+  { username:"quantumpartner", password:"QSA!Partner2025", firstName:"Partner", lastName:"Access", plan:"bot", type:"admin" },
 ];
+
+// ─── Partner Credentials (25 accounts, full Bot Tier access) ─────────────────
+const PARTNER_USERS = [
+  { username:"qspartner01", password:"QSP#Ax7!mR2025", plan:"bot" },
+  { username:"qspartner02", password:"QSP#Bk9!nT2025", plan:"bot" },
+  { username:"qspartner03", password:"QSP#Cv3!pW2025", plan:"bot" },
+  { username:"qspartner04", password:"QSP#Dq8!sL2025", plan:"bot" },
+  { username:"qspartner05", password:"QSP#Ez5!uK2025", plan:"bot" },
+  { username:"qspartner06", password:"QSP#Fh2!vN2025", plan:"bot" },
+  { username:"qspartner07", password:"QSP#Gj6!wM2025", plan:"bot" },
+  { username:"qspartner08", password:"QSP#Hm4!xQ2025", plan:"bot" },
+  { username:"qspartner09", password:"QSP#In7!yP2025", plan:"bot" },
+  { username:"qspartner10", password:"QSP#Jr1!zB2025", plan:"bot" },
+  { username:"qspartner11", password:"QSP#Kw9!aC2025", plan:"bot" },
+  { username:"qspartner12", password:"QSP#Ls3!bD2025", plan:"bot" },
+  { username:"qspartner13", password:"QSP#Mt6!cE2025", plan:"bot" },
+  { username:"qspartner14", password:"QSP#Nu8!dF2025", plan:"bot" },
+  { username:"qspartner15", password:"QSP#Ov2!eG2025", plan:"bot" },
+  { username:"qspartner16", password:"QSP#Pw5!fH2025", plan:"bot" },
+  { username:"qspartner17", password:"QSP#Qx1!gJ2025", plan:"bot" },
+  { username:"qspartner18", password:"QSP#Ry4!hI2025", plan:"bot" },
+  { username:"qspartner19", password:"QSP#Sz7!iK2025", plan:"bot" },
+  { username:"qspartner20", password:"QSP#Ta3!jL2025", plan:"bot" },
+  { username:"qspartner21", password:"QSP#Ub9!kM2025", plan:"bot" },
+  { username:"qspartner22", password:"QSP#Vc6!lN2025", plan:"bot" },
+  { username:"qspartner23", password:"QSP#Wd2!mO2025", plan:"bot" },
+  { username:"qspartner24", password:"QSP#Xe8!nP2025", plan:"bot" },
+  { username:"qspartner25", password:"QSP#Yf5!oQ2025", plan:"bot" },
+];
+
+// ─── Partner Account Setup Page ───────────────────────────────────────────────
+function PartnerSetupPage({ username, onComplete, onBack }) {
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", password:"", confirm:"" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const set = k => v => setForm(f=>({...f,[k]:v}));
+
+  const handleSubmit = () => {
+    setError("");
+    if (!form.firstName || !form.lastName || !form.email || !form.password) { setError("All fields are required."); return; }
+    if (!form.email.includes("@")) { setError("Please enter a valid email."); return; }
+    if (form.password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (form.password !== form.confirm) { setError("Passwords do not match."); return; }
+    setLoading(true);
+    const account = { firstName:form.firstName, lastName:form.lastName, email:form.email, password:form.password, createdAt:new Date().toISOString() };
+    localStorage.setItem(`qs_partner_${username}`, JSON.stringify(account));
+    setTimeout(() => { setLoading(false); onComplete({ firstName:form.firstName, lastName:form.lastName, email:form.email, phone:"" }); }, 800);
+  };
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"'IBM Plex Mono',monospace", display:"flex", flexDirection:"column" }}>
+      <style>{FONTS}</style>
+      <Nav onBack={onBack} backLabel="← Back" />
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+        <div style={{ width:"100%", maxWidth:460 }}>
+          <div style={{ textAlign:"center", marginBottom:28 }}>
+            <div style={{ fontSize:40, marginBottom:10 }}>🤝</div>
+            <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:"#fff", marginBottom:8 }}>Set Up Your Account</h2>
+            <p style={{ color:C.dim, fontSize:13, lineHeight:1.7 }}>
+              Welcome, partner! Create your personal login — you'll use this email and password every time you return.
+            </p>
+          </div>
+          <div style={{ background:C.panel, border:`1px solid ${C.orange}44`, borderRadius:12, padding:"32px 28px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, background:"#120800", border:`1px solid ${C.orange}33`, borderRadius:6, padding:"10px 14px", marginBottom:24 }}>
+              <span>⚡</span>
+              <span style={{ fontSize:11, color:C.orange }}>Full Bot Tier access · All markets · Free forever</span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <Input label="First Name" value={form.firstName} onChange={set("firstName")} placeholder="Jane" required />
+              <Input label="Last Name"  value={form.lastName}  onChange={set("lastName")}  placeholder="Smith" required />
+            </div>
+            <Input label="Your Email"       type="email"    value={form.email}    onChange={set("email")}    placeholder="jane@yourbrand.com" required />
+            <Input label="Create Password"  type="password" value={form.password} onChange={set("password")} placeholder="Min. 8 characters" required />
+            <Input label="Confirm Password" type="password" value={form.confirm}  onChange={set("confirm")}  placeholder="Re-enter password" required />
+            {error && <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>⚠ {error}</div>}
+            <button onClick={handleSubmit} disabled={loading} style={{ width:"100%", background:`linear-gradient(90deg,${C.orange},#ff9500)`, color:"#fff", border:"none", padding:"14px", borderRadius:6, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, letterSpacing:1, opacity:loading?0.7:1 }}>
+              {loading ? "CREATING ACCOUNT…" : "CREATE MY ACCOUNT →"}
+            </button>
+            <p style={{ fontSize:11, color:C.dim, textAlign:"center", marginTop:14, lineHeight:1.7 }}>
+              By continuing you agree to our Terms of Service and Privacy Policy.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Partner Login Page ────────────────────────────────────────────────────────
+function PartnerLogin({ onLogin, onSetup, onBack }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [showPass, setShowPass] = useState(false);
+
+  const handleLogin = () => {
+    setError(""); setLoading(true);
+    setTimeout(() => {
+      const match = PARTNER_USERS.find(u => u.username === username.trim().toLowerCase() && u.password === password);
+      if (!match) { setError("Invalid username or password. Please check your credentials."); setLoading(false); return; }
+
+      // Check if they've set up their personal account yet
+      const existing = localStorage.getItem(`qs_partner_${match.username}`);
+      if (existing) {
+        const acc = JSON.parse(existing);
+        onLogin({ firstName:acc.firstName, lastName:acc.lastName, email:acc.email, phone:"" }, match.plan);
+      } else {
+        setLoading(false);
+        onSetup(match.username);
+      }
+    }, 700);
+  };
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"'IBM Plex Mono',monospace", display:"flex", flexDirection:"column" }}>
+      <style>{FONTS}</style>
+      <Nav onBack={onBack} backLabel="← Back to site" />
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+        <div style={{ width:"100%", maxWidth:420 }}>
+          <div style={{ textAlign:"center", marginBottom:28 }}>
+            <div style={{ fontSize:36, marginBottom:10 }}>🤝</div>
+            <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:"#fff", marginBottom:8 }}>Partner Access</h2>
+            <p style={{ color:C.dim, fontSize:13 }}>Enter your partner credentials for free full access</p>
+          </div>
+          <div style={{ background:C.panel, border:`1px solid ${C.orange}55`, borderRadius:12, padding:"32px 28px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, background:"#120800", border:`1px solid ${C.orange}33`, borderRadius:6, padding:"10px 14px", marginBottom:24 }}>
+              <span>⚡</span>
+              <span style={{ fontSize:11, color:C.orange }}>Full Bot Tier · All markets · Auto-trading · Free access</span>
+            </div>
+            <Input label="Username" value={username} onChange={setUsername} placeholder="qspartner01" />
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:"block", fontSize:11, color:C.dim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>Password</label>
+              <div style={{ position:"relative" }}>
+                <input type={showPass?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)}
+                  placeholder="Enter your password" onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+                  style={{ width:"100%", background:"#040c14", border:`1px solid ${C.border}`, color:C.text, padding:"12px 44px 12px 14px", borderRadius:6, fontSize:13, fontFamily:"inherit", outline:"none", boxSizing:"border-box" }}
+                  onFocus={e=>e.target.style.borderColor=C.orange} onBlur={e=>e.target.style.borderColor=C.border} />
+                <button onClick={()=>setShowPass(s=>!s)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.dim, cursor:"pointer", fontSize:14 }}>{showPass?"🙈":"👁"}</button>
+              </div>
+            </div>
+            <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"10px 14px", marginBottom:16, fontSize:11, color:C.dim, lineHeight:1.7 }}>
+              🤝 First time? You'll create your personal email & password after logging in.<br/>
+              Returning? Your saved account loads automatically.
+            </div>
+            {error && <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>⚠ {error}</div>}
+            <button onClick={handleLogin} disabled={loading} style={{ width:"100%", background:`linear-gradient(90deg,${C.orange},#ff9500)`, color:"#fff", border:"none", padding:"14px", borderRadius:6, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, letterSpacing:1, opacity:loading?0.7:1 }}>
+              {loading ? "VERIFYING…" : "ACCESS DASHBOARD →"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Admin Login Page ─────────────────────────────────────────────────────────
 function AdminLogin({ onLogin, onBack }) {
@@ -1445,47 +1601,30 @@ function AdminLogin({ onLogin, onBack }) {
       <Nav onBack={onBack} backLabel="← Back to site" />
       <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
         <div style={{ width:"100%", maxWidth:420 }}>
-          <div style={{ textAlign:"center", marginBottom:32 }}>
-            <div style={{ fontSize:32, marginBottom:12 }}>🔐</div>
+          <div style={{ textAlign:"center", marginBottom:28 }}>
+            <div style={{ fontSize:32, marginBottom:10 }}>🔐</div>
             <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:"#fff", marginBottom:8 }}>Admin Access</h2>
             <p style={{ color:C.dim, fontSize:13 }}>Internal dashboard access · No payment required</p>
           </div>
-
           <div style={{ background:C.panel, border:`1px solid ${C.purple}55`, borderRadius:12, padding:"32px 28px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, background:"#0d0820", border:`1px solid ${C.purple}33`, borderRadius:6, padding:"10px 14px", marginBottom:24 }}>
-              <span style={{ fontSize:14 }}>✦</span>
-              <span style={{ fontSize:11, color:C.purple }}>Pro access · All markets · AI signals</span>
+              <span>✦</span><span style={{ fontSize:11, color:C.purple }}>Bot Tier · All markets · AI signals</span>
             </div>
-
             <Input label="Username" value={username} onChange={setUsername} placeholder="Enter your username" />
-
             <div style={{ marginBottom:16 }}>
               <label style={{ display:"block", fontSize:11, color:C.dim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>Password</label>
               <div style={{ position:"relative" }}>
-                <input
-                  type={showPass?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  onKeyDown={e=>e.key==="Enter"&&handleLogin()}
-                  style={{ width:"100%", background:"#040c14", border:`1px solid ${C.border}`, color:C.text, padding:"12px 44px 12px 14px", borderRadius:6, fontSize:13, fontFamily:"'IBM Plex Mono',monospace", outline:"none", boxSizing:"border-box" }}
-                  onFocus={e=>e.target.style.borderColor=C.purple}
-                  onBlur={e=>e.target.style.borderColor=C.border}
-                />
-                <button onClick={()=>setShowPass(s=>!s)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.dim, cursor:"pointer", fontSize:14 }}>
-                  {showPass?"🙈":"👁"}
-                </button>
+                <input type={showPass?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)}
+                  placeholder="Enter your password" onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+                  style={{ width:"100%", background:"#040c14", border:`1px solid ${C.border}`, color:C.text, padding:"12px 44px 12px 14px", borderRadius:6, fontSize:13, fontFamily:"inherit", outline:"none", boxSizing:"border-box" }}
+                  onFocus={e=>e.target.style.borderColor=C.purple} onBlur={e=>e.target.style.borderColor=C.border} />
+                <button onClick={()=>setShowPass(s=>!s)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.dim, cursor:"pointer", fontSize:14 }}>{showPass?"🙈":"👁"}</button>
               </div>
             </div>
-
-            {error && (
-              <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>
-                ⚠ {error}
-              </div>
-            )}
-
+            {error && <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>⚠ {error}</div>}
             <Button onClick={handleLogin} disabled={loading} fullWidth variant="purple">
               {loading ? "VERIFYING…" : "ACCESS DASHBOARD →"}
             </Button>
-
             <div style={{ marginTop:20, padding:"14px", background:C.bg, borderRadius:6, border:`1px solid ${C.border}` }}>
               <div style={{ fontSize:9, color:C.dim, letterSpacing:2, marginBottom:8 }}>YOUR CREDENTIALS</div>
               <div style={{ fontSize:11, color:C.text, lineHeight:2 }}>
@@ -1500,47 +1639,94 @@ function AdminLogin({ onLogin, onBack }) {
     </div>
   );
 }
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", password:"", confirm:"" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const set = k => v => setForm(f=>({...f,[k]:v}));
+
+  const handleSubmit = () => {
+    setError("");
+    if (!form.firstName || !form.lastName || !form.email || !form.password) { setError("All fields are required."); return; }
+    if (!form.email.includes("@")) { setError("Please enter a valid email."); return; }
+    if (form.password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (form.password !== form.confirm) { setError("Passwords do not match."); return; }
+    setLoading(true);
+
+    // Save promo account locally
+    const account = { firstName:form.firstName, lastName:form.lastName, email:form.email, password:form.password, promoCode, createdAt: new Date().toISOString() };
+    localStorage.setItem(`qs_promo_${promoCode}`, JSON.stringify(account));
+    setTimeout(() => { setLoading(false); onComplete({ firstName:form.firstName, lastName:form.lastName, email:form.email, phone:"" }); }, 800);
+  };
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"'IBM Plex Mono',monospace", display:"flex", flexDirection:"column" }}>
+      <style>{FONTS}</style>
+      <Nav onBack={onBack} backLabel="← Back" />
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+        <div style={{ width:"100%", maxWidth:460 }}>
+          <div style={{ textAlign:"center", marginBottom:28 }}>
+            <div style={{ fontSize:36, marginBottom:10 }}>🎁</div>
+            <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:"#fff", marginBottom:8 }}>Set Up Your Free Account</h2>
+            <p style={{ color:C.dim, fontSize:13, lineHeight:1.7 }}>
+              Your promo code <strong style={{ color:C.orange }}>{promoCode}</strong> gives you <strong style={{ color:C.text }}>full Bot Tier access — free forever</strong>. Create your personal login below.
+            </p>
+          </div>
+
+          <div style={{ background:C.panel, border:`1px solid ${C.orange}44`, borderRadius:12, padding:"32px 28px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, background:"#120800", border:`1px solid ${C.orange}33`, borderRadius:6, padding:"10px 14px", marginBottom:24 }}>
+              <span style={{ fontSize:14 }}>⚡</span>
+              <span style={{ fontSize:11, color:C.orange }}>Bot Tier · All markets · Auto-trading · Free access</span>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <Input label="First Name" value={form.firstName} onChange={set("firstName")} placeholder="Jane" required />
+              <Input label="Last Name"  value={form.lastName}  onChange={set("lastName")}  placeholder="Smith" required />
+            </div>
+            <Input label="Your Email"    type="email"    value={form.email}    onChange={set("email")}    placeholder="jane@yourbrand.com" required />
+            <Input label="Set Password"  type="password" value={form.password} onChange={set("password")} placeholder="Min. 8 characters" required />
+            <Input label="Confirm Password" type="password" value={form.confirm} onChange={set("confirm")} placeholder="Re-enter password" required />
+
+            {error && <div style={{ background:"#1a0010", border:`1px solid ${C.red}33`, borderRadius:6, padding:"10px 14px", color:C.red, fontSize:12, marginBottom:16 }}>⚠ {error}</div>}
+
+            <button onClick={handleSubmit} disabled={loading} style={{ width:"100%", background:`linear-gradient(90deg,${C.orange},#ff9500)`, color:"#fff", border:"none", padding:"14px", borderRadius:6, cursor:"pointer", fontFamily:"'IBM Plex Mono',monospace", fontSize:13, fontWeight:700, letterSpacing:1, opacity:loading?0.7:1 }}>
+              {loading ? "CREATING ACCOUNT…" : "CREATE MY ACCOUNT →"}
+            </button>
+
+            <p style={{ fontSize:11, color:C.dim, textAlign:"center", marginTop:14, lineHeight:1.7 }}>
+              Your account is tied to promo code <strong style={{ color:C.orange }}>{promoCode}</strong>. By continuing you agree to our Terms of Service.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── App Root ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [page, setPage] = useState("landing");
-  const [plan, setPlan] = useState(null);
-  const [user, setUser] = useState(null);
+  const [page, setPage]             = useState("landing");
+  const [plan, setPlan]             = useState(null);
+  const [user, setUser]             = useState(null);
+  const [partnerUsername, setPartnerUsername] = useState(null);
 
-  // Navigate with browser history so back button works
-  const navigate = (to) => {
-    window.history.pushState({ page: to }, "", `#${to}`);
-    setPage(to);
-  };
+  const navigate = (to) => { window.history.pushState({ page:to }, "", `#${to}`); setPage(to); };
 
   useEffect(() => {
     const s = document.createElement("script");
-    s.src = "https://js.stripe.com/v3/";
-    s.async = true;
+    s.src = "https://js.stripe.com/v3/"; s.async = true;
     document.head.appendChild(s);
-
-    // Restore session
     const saved = localStorage.getItem("qs_user");
     const savedPlan = localStorage.getItem("qs_plan");
     if (saved && savedPlan) {
-      setUser(JSON.parse(saved));
-      setPlan(savedPlan);
-      setPage("dashboard");
-      return;
+      setUser(JSON.parse(saved)); setPlan(savedPlan);
+      setPage(savedPlan === "bot" ? "botdashboard" : "dashboard"); return;
     }
-
-    // Read initial hash
-    const hash = window.location.hash.replace("#", "");
-    if (hash && ["landing","plan","signup","payment","admin","dashboard"].includes(hash)) {
-      setPage(hash);
-    }
-
-    // Handle browser back/forward buttons
+    const hash = window.location.hash.replace("#","");
+    if (hash && ["landing","plan","signup","payment","admin","partner","dashboard","botdashboard"].includes(hash)) setPage(hash);
     const handlePop = (e) => {
       const p = e.state?.page || "landing";
-      // Don't let back go to dashboard if logged out
       const savedU = localStorage.getItem("qs_user");
-      if (p === "dashboard" && !savedU) { setPage("landing"); return; }
+      if ((p==="dashboard"||p==="botdashboard") && !savedU) { setPage("landing"); return; }
       setPage(p);
     };
     window.addEventListener("popstate", handlePop);
@@ -1548,20 +1734,13 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("qs_user");
-    localStorage.removeItem("qs_plan");
+    localStorage.removeItem("qs_user"); localStorage.removeItem("qs_plan");
     setUser(null); setPlan(null);
     window.history.pushState({ page:"landing" }, "", "#landing");
     setPage("landing");
   };
 
-  const handlePaySuccess = () => {
-    localStorage.setItem("qs_user", JSON.stringify(user));
-    localStorage.setItem("qs_plan", plan);
-    navigate("success");
-  };
-
-  const handleAdminLogin = (u, p) => {
+  const handleLogin = (u, p) => {
     localStorage.setItem("qs_user", JSON.stringify(u));
     localStorage.setItem("qs_plan", p);
     setUser(u); setPlan(p);
@@ -1570,15 +1749,26 @@ export default function App() {
     setPage(dest);
   };
 
-  if (page === "landing")   return <LandingPage onGetStarted={()=>navigate("plan")} onAdminLogin={()=>navigate("admin")} />;
-  if (page === "admin")     return <AdminLogin onLogin={handleAdminLogin} onBack={()=>navigate("landing")} />;
-  if (page === "plan")      return <PlanPage onSelect={p=>{setPlan(p);navigate("signup");}} onBack={()=>navigate("landing")} />;
-  if (page === "signup")    return <SignupPage plan={plan} onNext={u=>{setUser(u);navigate("payment");}} onBack={()=>navigate("plan")} />;
-  if (page === "payment")   return <PaymentPage plan={plan} user={user} onSuccess={handlePaySuccess} onBack={()=>navigate("signup")} />;
-  if (page === "success")   return <SuccessPage plan={plan} user={user} onEnter={()=>navigate(plan==="bot"?"botsetup":"dashboard")} />;
-  if (page === "botsetup")  return <BotSetupPage user={user} onComplete={()=>navigate("botdashboard")} onSkip={()=>navigate("botdashboard")} />;
+  const handlePartnerFirstLogin = (uname) => {
+    setPartnerUsername(uname);
+    navigate("partnersetup");
+  };
+
+  const handlePartnerSetupComplete = (u) => {
+    handleLogin(u, "bot");
+  };
+
+  if (page === "landing")      return <LandingPage onGetStarted={()=>navigate("plan")} onAdminLogin={()=>navigate("admin")} onPartnerLogin={()=>navigate("partner")} />;
+  if (page === "admin")        return <AdminLogin onLogin={handleLogin} onBack={()=>navigate("landing")} />;
+  if (page === "partner")      return <PartnerLogin onLogin={handleLogin} onSetup={handlePartnerFirstLogin} onBack={()=>navigate("landing")} />;
+  if (page === "partnersetup") return <PartnerSetupPage username={partnerUsername} onComplete={handlePartnerSetupComplete} onBack={()=>navigate("partner")} />;
+  if (page === "plan")         return <PlanPage onSelect={p=>{setPlan(p);navigate("signup");}} onBack={()=>navigate("landing")} />;
+  if (page === "signup")       return <SignupPage plan={plan} onNext={u=>{setUser(u);navigate("payment");}} onBack={()=>navigate("plan")} />;
+  if (page === "payment")      return <PaymentPage plan={plan} user={user} onSuccess={()=>{ localStorage.setItem("qs_user",JSON.stringify(user)); localStorage.setItem("qs_plan",plan); navigate("success"); }} onBack={()=>navigate("signup")} />;
+  if (page === "success")      return <SuccessPage plan={plan} user={user} onEnter={()=>navigate(plan==="bot"?"botsetup":"dashboard")} />;
+  if (page === "botsetup")     return <BotSetupPage user={user} onComplete={()=>navigate("botdashboard")} onSkip={()=>navigate("botdashboard")} />;
   if (page === "botdashboard") return <BotDashboard user={user} onLogout={handleLogout} />;
-  if (page === "dashboard") return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
+  if (page === "dashboard")    return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
 
