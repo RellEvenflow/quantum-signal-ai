@@ -1,7 +1,6 @@
 {
   "name": "quantum-signal-ai",
   "version": "1.0.0",
-  "description": "Quantum Signal AI - Professional Trading Signals",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -9,9 +8,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "bcryptjs": "^2.4.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.12.0"
+    "recharts": "^2.12.0",
+    "resend": "^3.2.0",
+    "stripe": "^14.21.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
