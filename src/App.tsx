@@ -1288,58 +1288,194 @@ function Dashboard({ plan, user, onLogout }) {
 
 // ─── Landing Page ─────────────────────────────────────────────────────────────
 function LandingPage({ onGetStarted, onAdminLogin, onPartnerLogin }) {
+  const [liveFeed] = useState([
+    { time:"2:41 PM", pair:"BTC/USD",  type:"BUY",  price:"$67,420", pnl:"+$124", via:"📱+📧" },
+    { time:"1:22 PM", pair:"EUR/USD",  type:"SELL", price:"$1.0842", pnl:"+$88",  via:"📱+📧" },
+    { time:"11:05 AM",pair:"XAU/USD",  type:"BUY",  price:"$2,318",  pnl:"+$210", via:"📱+📧" },
+    { time:"9:33 AM", pair:"ETH/USD",  type:"BUY",  price:"$3,480",  pnl:"+$67",  via:"📱+📧" },
+    { time:"Yesterday",pair:"NAS100", type:"SELL", price:"$17,840", pnl:"+$340", via:"📱+📧" },
+  ]);
+
   return (
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'IBM Plex Mono',monospace",color:C.text}}>
-      <style>{`${FONTS} *{box-sizing:border-box;margin:0;padding:0;} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} @keyframes floatUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}} @keyframes glowPurple{0%,100%{box-shadow:0 0 20px #a855f722}50%{box-shadow:0 0 50px #a855f755}}`}</style>
-      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,background:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,0.012) 2px,rgba(0,212,255,0.012) 4px)"}} />
-      <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,borderBottom:`1px solid ${C.border}`,background:"rgba(3,6,8,0.96)",backdropFilter:"blur(12px)",padding:"14px 40px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <style>{`
+        ${FONTS}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        @keyframes floatUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes glowOrange{0%,100%{box-shadow:0 0 20px ${C.orange}33}50%{box-shadow:0 0 60px ${C.orange}88}}
+        @keyframes glowPurple{0%,100%{box-shadow:0 0 20px #a855f722}50%{box-shadow:0 0 50px #a855f755}}
+        @keyframes scrollFeed{0%{transform:translateY(0)}100%{transform:translateY(-50%)}}
+        @keyframes botBlink{0%,100%{opacity:1}50%{opacity:0.3}}
+      `}</style>
+
+      {/* Scanlines */}
+      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,background:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,0.01) 2px,rgba(0,212,255,0.01) 4px)"}} />
+
+      {/* Nav */}
+      <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,borderBottom:`1px solid ${C.border}`,background:"rgba(3,6,8,0.97)",backdropFilter:"blur(16px)",padding:"14px 40px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <Logo />
-        <div style={{display:"flex",gap:16,alignItems:"center",fontSize:12,color:C.dim}}>
-          <button onClick={onAdminLogin} style={{background:"transparent",color:C.dim,border:"none",cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:1}}>🔐 Admin</button>
-          <button onClick={onPartnerLogin} style={{background:"transparent",color:C.orange,border:`1px solid ${C.orange}44`,padding:"6px 14px",borderRadius:4,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:1}}>🤝 Partners</button>
-          <button onClick={onGetStarted} style={{background:C.purple,color:"#fff",border:"none",padding:"8px 18px",borderRadius:4,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:12,fontWeight:700,letterSpacing:1}}>GET STARTED</button>
+        <div style={{display:"flex",gap:12,alignItems:"center"}}>
+          <button onClick={onAdminLogin} style={{background:"transparent",color:C.dim,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,letterSpacing:1}}>🔐 Admin</button>
+          <button onClick={onPartnerLogin} style={{background:"transparent",color:C.orange,border:`1px solid ${C.orange}44`,padding:"6px 14px",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:11,letterSpacing:1}}>🤝 Partners</button>
+          <button onClick={onGetStarted} style={{background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",border:"none",padding:"8px 20px",borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,letterSpacing:1,animation:"glowOrange 2s infinite"}}>🤖 START TRADING</button>
         </div>
       </nav>
 
-      <div style={{paddingTop:140,paddingBottom:80,textAlign:"center",position:"relative",zIndex:1,animation:"floatUp 0.9s ease forwards"}}>
-        <div style={{display:"inline-block",background:"#00d4ff11",border:`1px solid ${C.accent}44`,borderRadius:20,padding:"4px 16px",fontSize:10,color:C.accent,letterSpacing:3,marginBottom:24,animation:"pulse 3s infinite"}}>● LIVE MARKET SIGNALS · AI-POWERED · 5 INDICATORS</div>
-        <h1 style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(34px,5.5vw,76px)",fontWeight:800,color:"#fff",lineHeight:1.05,marginBottom:20}}>Professional Trading Signals.<br/><span style={{color:C.accent}}>Built for Every Market.</span></h1>
-        <p style={{fontSize:16,color:C.dim,maxWidth:560,margin:"0 auto 44px",lineHeight:1.75}}>From crypto to stocks, options to forex — Quantum Signal AI delivers real-time confluence signals with AI confidence scoring and paper trading.</p>
-        <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
-          <button onClick={onGetStarted} style={{background:"transparent",color:C.accent,border:`2px solid ${C.accent}`,padding:"15px 32px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,letterSpacing:1}}>START AT $49/MO</button>
-          <button onClick={onGetStarted} style={{background:C.purple,color:"#fff",border:"none",padding:"15px 32px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,letterSpacing:1,animation:"glowPurple 2.5s infinite"}}>GET PRO — $149/MO ✦</button>
-          <button onClick={onGetStarted} style={{background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",border:"none",padding:"15px 32px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:14,fontWeight:700,letterSpacing:1}}>🤖 BOT TIER — $299/MO</button>
+      {/* Hero */}
+      <div style={{paddingTop:130,paddingBottom:60,textAlign:"center",position:"relative",zIndex:1}}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"#120800",border:`1px solid ${C.orange}55`,borderRadius:20,padding:"6px 18px",fontSize:10,color:C.orange,letterSpacing:2,marginBottom:28}}>
+          <span style={{width:8,height:8,borderRadius:"50%",background:C.orange,display:"inline-block",animation:"botBlink 1s infinite"}}/>
+          BOT ACTIVE · TRADING 24/7 · FULLY AUTOMATED
         </div>
-        <div style={{marginTop:16,fontSize:11,color:C.dim}}>Cancel anytime · No contracts · Educational use only · US-based</div>
+
+        <h1 style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(32px,5vw,72px)",fontWeight:800,color:"#fff",lineHeight:1.05,marginBottom:16,animation:"floatUp 0.8s ease forwards"}}>
+          We Trade.<br/>
+          <span style={{background:`linear-gradient(90deg,${C.orange},#ff9500)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>You Profit.</span>
+        </h1>
+
+        <p style={{fontSize:16,color:C.dim,maxWidth:580,margin:"0 auto 16px",lineHeight:1.8}}>
+          Quantum Signal AI's automated bot connects to your broker account and executes trades 24/7 — no charts, no guesswork, no manual work. Just results.
+        </p>
+
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:20,marginBottom:36,flexWrap:"wrap",fontSize:12,color:C.dim}}>
+          {["📱 Telegram alerts","📧 Email alerts","⚡ Auto-executes trades","🛡 Your account, your control"].map(f=>(
+            <span key={f} style={{display:"flex",alignItems:"center",gap:5}}><span style={{color:C.green}}>✓</span>{f}</span>
+          ))}
+        </div>
+
+        <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap",marginBottom:16}}>
+          <button onClick={onGetStarted} style={{background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",border:"none",padding:"16px 36px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontSize:15,fontWeight:700,letterSpacing:1,animation:"glowOrange 2s infinite"}}>
+            🤖 ACTIVATE BOT — $299/MO
+          </button>
+          <button onClick={onGetStarted} style={{background:"transparent",color:C.text,border:`1px solid ${C.border}`,padding:"16px 36px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontSize:14,letterSpacing:1}}>
+            VIEW ALL PLANS →
+          </button>
+        </div>
+        <div style={{fontSize:11,color:C.dim}}>Cancel anytime · No contracts · Trades on YOUR broker account · US-based</div>
       </div>
 
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 40px 80px"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:18}}>
+      {/* Live Trade Feed */}
+      <div style={{maxWidth:900,margin:"0 auto 60px",padding:"0 24px"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontSize:10,color:C.green,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>
+            <span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:C.green,marginRight:6,animation:"pulse 1s infinite"}}/>
+            Live Trade Activity
+          </div>
+          <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:"#fff"}}>The Bot Is Working Right Now</h2>
+        </div>
+        <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+          <div style={{padding:"10px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",fontSize:10,color:C.dim,letterSpacing:2}}>
+            <span>RECENT TRADES</span>
+            <span style={{color:C.green}}>● LIVE</span>
+          </div>
+          {liveFeed.map((t,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 20px",borderBottom:i<liveFeed.length-1?`1px solid ${C.border}`:"none",flexWrap:"wrap",gap:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:4,background:t.type==="BUY"?"#002a1a":"#2a0010",border:`1px solid ${t.type==="BUY"?C.green:C.red}44`,color:t.type==="BUY"?C.green:C.red}}>{t.type}</span>
+                <div>
+                  <div style={{fontSize:13,color:C.text,fontWeight:600}}>{t.pair}</div>
+                  <div style={{fontSize:10,color:C.dim}}>{t.time}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:20}}>
+                <span style={{fontSize:12,color:C.text,fontFamily:"monospace"}}>{t.price}</span>
+                <span style={{fontSize:13,color:C.green,fontWeight:700}}>{t.pnl}</span>
+                <span style={{fontSize:11,color:C.dim}} title="Notified via Telegram + Email">{t.via}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{textAlign:"center",marginTop:10,fontSize:11,color:C.dim}}>Every trade instantly notified via 📱 Telegram & 📧 Email</div>
+      </div>
+
+      {/* How It Works */}
+      <div style={{maxWidth:1000,margin:"0 auto 80px",padding:"0 40px"}}>
+        <div style={{textAlign:"center",marginBottom:44}}>
+          <div style={{fontSize:10,color:C.accent,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>How It Works</div>
+          <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:30,fontWeight:800,color:"#fff"}}>Set it up once. Let it run forever.</h2>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:2}}>
           {[
-            {icon:"📈",title:"5-Indicator Engine",  desc:"EMA, RSI, MACD, OBV & ATR combined into one powerful confluence signal."},
-            {icon:"⚡",title:"Real-Time Signals",   desc:"Pro: signals fire instantly. Starter: 5–10 curated signals per week."},
-            {icon:"🤖",title:"AI Confidence Score", desc:"Pro exclusive: AI scores each signal 0–100 based on indicator strength."},
-            {icon:"📱",title:"Mobile Alerts",       desc:"Email, SMS & push notifications so you never miss a signal."},
-            {icon:"💰",title:"Paper Trading",        desc:"All plans include a $10,000 virtual wallet to practice risk-free."},
-            {icon:"🛡",title:"Risk Management",     desc:"Stop loss at 1.5×ATR and take profit at 2×ATR auto-calculated."},
-            {icon:"🔗",title:"Auto-Trading Bot",    desc:"Bot Tier: connects to your Alpaca or Coinbase account and executes trades automatically."},
-            {icon:"⛔",title:"Emergency Stop",      desc:"Bot Tier: one-click kill switch cancels all pending orders instantly."},
+            { step:"01", icon:"💳", title:"Subscribe", desc:"Choose your plan and complete payment via Stripe. Takes 2 minutes." },
+            { step:"02", icon:"🔗", title:"Connect Broker", desc:"Link your Alpaca or Coinbase account with your API keys. Your funds stay in your account." },
+            { step:"03", icon:"⚙️", title:"Set Risk Level", desc:"Choose how much to risk per trade (0.5%–10%) and max open positions." },
+            { step:"04", icon:"🤖", title:"Bot Trades 24/7", desc:"The bot monitors signals and executes trades automatically around the clock." },
+            { step:"05", icon:"📱", title:"Get Notified", desc:"Every trade sends you a Telegram message and email instantly." },
+            { step:"06", icon:"📊", title:"Track Results", desc:"View your live P&L, trade history and performance in your dashboard." },
+          ].map((s,i)=>(
+            <div key={s.step} style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:i===0?"12px 0 0 12px":i===5?"0 12px 12px 0":"0",padding:"28px 22px",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:10,right:14,fontSize:32,fontWeight:800,color:C.border,fontFamily:"'Syne',sans-serif"}}>{s.step}</div>
+              <div style={{fontSize:28,marginBottom:12}}>{s.icon}</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,color:"#fff",marginBottom:8}}>{s.title}</div>
+              <div style={{fontSize:12,color:C.dim,lineHeight:1.65}}>{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Notifications callout */}
+      <div style={{maxWidth:900,margin:"0 auto 80px",padding:"0 40px"}}>
+        <div style={{background:"linear-gradient(135deg,#120800,#0a0500)",border:`1px solid ${C.orange}44`,borderRadius:16,padding:"40px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:32,alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:10,color:C.orange,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Never Miss a Trade</div>
+            <h3 style={{fontFamily:"'Syne',sans-serif",fontSize:26,fontWeight:800,color:"#fff",marginBottom:14}}>Instant Telegram + Email Alerts</h3>
+            <p style={{fontSize:13,color:C.dim,lineHeight:1.8,marginBottom:20}}>The moment the bot executes a trade, you get notified on both Telegram and Email — showing the pair, direction, price, and P&L. Stay informed without being glued to a screen.</p>
+            <div style={{display:"flex",gap:12}}>
+              <div style={{background:"#0a1208",border:`1px solid ${C.green}33`,borderRadius:8,padding:"10px 16px",fontSize:12,color:C.green}}>📱 Telegram</div>
+              <div style={{background:"#0a1208",border:`1px solid ${C.green}33`,borderRadius:8,padding:"10px 16px",fontSize:12,color:C.green}}>📧 Email</div>
+            </div>
+          </div>
+          <div style={{background:"#0a0600",border:`1px solid ${C.border}`,borderRadius:12,padding:"20px",fontFamily:"monospace",fontSize:12}}>
+            <div style={{color:C.dim,fontSize:10,marginBottom:12,letterSpacing:2}}>📱 TELEGRAM NOTIFICATION</div>
+            <div style={{background:"#1a0f00",borderRadius:8,padding:"14px",lineHeight:2}}>
+              <div style={{color:C.orange,fontWeight:700}}>⚡ QUANTUM SIGNAL AI</div>
+              <div style={{color:C.green}}>✅ TRADE EXECUTED</div>
+              <div style={{color:C.text}}>Pair: <span style={{color:C.accent}}>BTC/USD</span></div>
+              <div style={{color:C.text}}>Type: <span style={{color:C.green}}>BUY</span></div>
+              <div style={{color:C.text}}>Price: <span style={{color:C.accent}}>$67,420</span></div>
+              <div style={{color:C.text}}>Stop: <span style={{color:C.red}}>$66,791</span></div>
+              <div style={{color:C.text}}>Target: <span style={{color:C.green}}>$68,340</span></div>
+              <div style={{color:C.dim,fontSize:10,marginTop:6}}>Signal: STRONG BUY · Confidence: 91/100</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features grid */}
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"0 40px 80px"}}>
+        <div style={{textAlign:"center",marginBottom:40}}>
+          <div style={{fontSize:10,color:C.accent,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Everything Included</div>
+          <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:30,fontWeight:800,color:"#fff"}}>Built for hands-off trading</h2>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16}}>
+          {[
+            {icon:"🤖",title:"24/7 Auto-Trading",     desc:"Bot runs continuously, executing trades when signals fire — even while you sleep.",         hot:true},
+            {icon:"📱",title:"Telegram + Email Alerts",desc:"Instant notifications on every trade execution with full trade details and P&L.",           hot:true},
+            {icon:"🔗",title:"Broker Integration",     desc:"Connects to Alpaca (stocks+crypto) and Coinbase Advanced (crypto). Your account, your funds."},
+            {icon:"⛔",title:"Emergency Stop",         desc:"One-click kill switch that cancels all pending orders and pauses the bot instantly."},
+            {icon:"🛡",title:"Risk Controls",          desc:"Set max % risk per trade, max open positions, and signal strength threshold."},
+            {icon:"📊",title:"Live Trade Dashboard",   desc:"Real-time P&L tracking, trade history, win rate and performance stats."},
+            {icon:"⚡",title:"5-Indicator Engine",     desc:"EMA, RSI, MACD, OBV & ATR combined into one AI-powered confluence signal."},
+            {icon:"🌍",title:"All Major Markets",      desc:"Crypto, stocks, indices (US30, SPX, NAS100), forex and metals — all covered."},
           ].map(f=>(
-            <div key={f.title} style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,padding:"22px 20px"}}>
+            <div key={f.title} style={{background:C.panel,border:`1px solid ${f.hot?C.orange+"44":C.border}`,borderRadius:10,padding:"22px 20px",position:"relative"}}>
+              {f.hot && <div style={{position:"absolute",top:12,right:12,background:`${C.orange}22`,border:`1px solid ${C.orange}44`,color:C.orange,fontSize:8,padding:"2px 6px",borderRadius:4,letterSpacing:1}}>HOT</div>}
               <div style={{fontSize:26,marginBottom:10}}>{f.icon}</div>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,color:"#fff",marginBottom:7}}>{f.title}</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:"#fff",marginBottom:7}}>{f.title}</div>
               <div style={{fontSize:12,color:C.dim,lineHeight:1.65}}>{f.desc}</div>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Pricing section header */}
-        <div style={{textAlign:"center",marginTop:70,marginBottom:40}}>
+      {/* Pricing */}
+      <div style={{maxWidth:1100,margin:"0 auto",padding:"0 40px 80px"}}>
+        <div style={{textAlign:"center",marginBottom:44}}>
           <div style={{fontSize:10,color:C.accent,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Pricing</div>
           <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:32,fontWeight:800,color:"#fff",marginBottom:10}}>Choose Your Edge</h2>
-          <p style={{color:C.dim,fontSize:14}}>Start free · Cancel anytime · No contracts</p>
+          <p style={{color:C.dim,fontSize:14}}>All plans include Telegram + Email alerts · Cancel anytime</p>
         </div>
-
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
 
           {/* Starter */}
@@ -1349,13 +1485,13 @@ function LandingPage({ onGetStarted, onAdminLogin, onPartnerLogin }) {
             <div style={{color:C.dim,fontSize:12,marginBottom:20}}>/month</div>
             {[
               "5–10 curated signals/week",
-              "Email, SMS & push alerts",
+              "📱 Telegram + 📧 Email alerts",
               "Basic crypto dashboard (5 pairs)",
               "$10,000 paper trading wallet",
               "Stop loss & take profit levels",
               "Community Discord access",
             ].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:10}}><span style={{color:C.green,flexShrink:0}}>✓</span><span style={{fontSize:12,color:C.text,lineHeight:1.5}}>{f}</span></div>)}
-            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:"transparent",color:C.accent,border:`2px solid ${C.accent}`,padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET STARTED →</button>
+            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:"transparent",color:C.accent,border:`2px solid ${C.accent}`,padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700}}>GET STARTED →</button>
           </div>
 
           {/* Pro */}
@@ -1366,46 +1502,55 @@ function LandingPage({ onGetStarted, onAdminLogin, onPartnerLogin }) {
             <div style={{color:C.dim,fontSize:12,marginBottom:20}}>/month</div>
             {[
               "Real-time signals as they fire",
+              "📱 Telegram + 📧 Email alerts",
               "AI Confidence Score per signal",
               "Stocks, options, crypto & forex",
               "Advanced risk management",
-              "Position sizing calculator",
               "$10,000 paper trading wallet",
               "Priority support",
             ].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:10}}><span style={{color:C.purple,flexShrink:0}}>✦</span><span style={{fontSize:12,color:C.text,lineHeight:1.5}}>{f}</span></div>)}
-            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:C.purple,color:"#fff",border:"none",padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET PRO →</button>
+            <button onClick={onGetStarted} style={{width:"100%",marginTop:20,background:C.purple,color:"#fff",border:"none",padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700}}>GET PRO →</button>
           </div>
 
           {/* Bot */}
-          <div style={{background:"#120800",border:`2px solid ${C.orange}`,borderRadius:16,padding:"36px 28px",position:"relative",boxShadow:`0 0 30px ${C.orange}22`}}>
-            <div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",fontSize:10,fontWeight:700,letterSpacing:2,padding:"4px 18px",borderRadius:20}}>🤖 AUTO-TRADER</div>
+          <div style={{background:"#120800",border:`2px solid ${C.orange}`,borderRadius:16,padding:"36px 28px",position:"relative",animation:"glowOrange 3s infinite"}}>
+            <div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",fontSize:10,fontWeight:700,letterSpacing:2,padding:"4px 18px",borderRadius:20}}>🤖 FULLY AUTOMATED</div>
             <div style={{fontSize:10,color:C.orange,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>⚡ Bot Tier</div>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:48,fontWeight:800,color:"#fff",lineHeight:1}}>$299</div>
             <div style={{color:C.dim,fontSize:12,marginBottom:20}}>/month</div>
             {[
               "Everything in Pro plan",
-              "Auto-executes trades on YOUR account",
+              "📱 Telegram + 📧 Email on EVERY trade",
+              "Bot auto-executes trades 24/7",
               "Connect Alpaca (stocks + crypto)",
               "Connect Coinbase Advanced (crypto)",
               "Customizable risk % per trade",
-              "Max open trades control",
               "Emergency stop button",
-              "Full live trade log & P&L tracking",
+              "Full live trade log & P&L",
               "Dedicated support",
             ].map(f=><div key={f} style={{display:"flex",gap:10,marginBottom:10}}><span style={{color:C.orange,flexShrink:0}}>⚡</span><span style={{fontSize:12,color:C.text,lineHeight:1.5}}>{f}</span></div>)}
             <div style={{marginTop:14,background:"#1a0800",border:`1px solid ${C.orange}33`,borderRadius:6,padding:"10px 12px",fontSize:11,color:C.orange,marginBottom:16,lineHeight:1.6}}>
               ⚠ Trades execute on your own broker account. You maintain full control at all times.
             </div>
-            <button onClick={onGetStarted} style={{width:"100%",background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",border:"none",padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"'IBM Plex Mono',monospace",fontSize:13,fontWeight:700}}>GET BOT TIER →</button>
+            <button onClick={onGetStarted} style={{width:"100%",background:`linear-gradient(90deg,${C.orange},#ff9500)`,color:"#fff",border:"none",padding:"13px",borderRadius:6,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,letterSpacing:1}}>
+              🤖 ACTIVATE BOT →
+            </button>
           </div>
 
         </div>
       </div>
 
-      <div style={{background:C.panel,borderTop:`1px solid ${C.border}`,padding:"32px 40px",textAlign:"center"}}>
+      {/* Footer / Disclaimer */}
+      <div style={{background:C.panel,borderTop:`1px solid ${C.border}`,padding:"36px 40px",textAlign:"center"}}>
         <div style={{maxWidth:800,margin:"0 auto"}}>
+          <Logo />
+          <div style={{marginTop:16,display:"flex",gap:20,justifyContent:"center",flexWrap:"wrap",fontSize:11,color:C.dim,marginBottom:20}}>
+            {["📱 Telegram Alerts","📧 Email Alerts","🤖 Auto-Trading","🛡 Risk Management","📊 Live Dashboard"].map(f=><span key={f}>{f}</span>)}
+          </div>
           <div style={{fontSize:10,color:C.yellow,letterSpacing:3,marginBottom:10}}>⚠ LEGAL DISCLAIMER</div>
-          <p style={{fontSize:11,color:C.dim,lineHeight:1.85}}>Quantum Signal AI is a software tool for educational purposes only. It does not constitute financial advice or any recommendation to buy or sell any financial instrument. Quantum Signal AI is not a registered investment advisor. Past performance does not guarantee future results. All trading involves substantial risk. By subscribing you agree to our Terms of Service and use this tool at your own risk.</p>
+          <p style={{fontSize:11,color:C.dim,lineHeight:1.85}}>
+            Quantum Signal AI is a software tool for educational purposes only. It does not constitute financial advice or any recommendation to buy or sell any financial instrument. Quantum Signal AI is not a registered investment advisor. The automated bot executes trades on the user's own broker account — we do not hold, manage, or have access to user funds. Past performance does not guarantee future results. All trading involves substantial risk. By subscribing you agree to our Terms of Service and use this tool entirely at your own risk.
+          </p>
           <div style={{marginTop:16,fontSize:10,color:C.dim}}>© 2025 Quantum Signal AI · United States · Educational use only</div>
         </div>
       </div>
@@ -1709,8 +1854,6 @@ export default function App() {
   if (page === "dashboard")    return <Dashboard plan={plan} user={user} onLogout={handleLogout} />;
   return null;
 }
-
-
 
 
 
